@@ -47,6 +47,24 @@ class Inventory:
         else:
             self.ingredient_dict[name].addOunces(ounces)
 
+    def hasAppliance(self, name: str):
+        """
+        Determines if Appliance is in inventory
+        """
+        return name in self.appliance_dict.keys()
+
+    def hasTool(self, name: str):
+        """
+        Determines if Appliance is in inventory
+        """
+        return name in self.tool_dict.keys()
+
+    def hasIngredient(self, name: str):
+        """
+        Determines if Appliance is in inventory
+        """
+        return name in self.ingredient_dict.keys()
+
     def removeAppliance(self, name: str, quantity: int):
         """
         Removes an appliance from the list OR updates the quantity of appliances
@@ -109,25 +127,51 @@ class Inventory:
             sub_status = self.appliance_dict[name].status - in_use_status
             self.appliance_dict[name].changeInUseStatus(sub_status)
 
+    def loadInventory(self, filename):
+        """
+        Loads an Invetory from a file
+        """
+        print("TODO")
+
+    def saveInventory(self, filename):
+        """
+        Saves an Inventory to a file
+        """
+        print("TODO")
+
+    def toString(self):
+        """
+        Converts the inventory into a string: {Appliances, Tools, Ingredients}
+        """
+        invent_string = "######## Appliance List ########\n"
+        for appliance in sorted(self.appliance_dict.keys()):
+            invent_string += self.appliance_dict[appliance].toString() + "\n"
+        invent_string += "######## Tool List ########\n"
+        for tool in sorted(self.tool_dict.keys()):
+            invent_string += self.tool_dict[tool].toString() + "\n"
+        invent_string += "######## Ingredient List ########\n"
+        for ingredient in sorted(self.ingredient_dict.keys()):
+            invent_string += self.ingredient_dict[ingredient].toString() + "\n"
+        return invent_string
+
     def printInventory(self):
         """
         Prints the current inventory: {Appliances, Tools, Ingredients}
         """
-        print("######## Appliance List ########")
-        for appliance in sorted(self.appliance_dict.keys()):
-            self.appliance_dict[appliance].printItem()
-        print("######## Tool List ########")
-        for tool in sorted(self.tool_dict.keys()):
-            self.tool_dict[tool].printItem()
-        print("######## Ingredient List ########")
-        for ingredient in sorted(self.ingredient_dict.keys()):
-            self.ingredient_dict[ingredient].printItem()
+        print(self.toString())
+
 
 class Item(object):
     '''
     Base class for a inventory item.
     '''
     def __init__(self, name: str, quantity: int):
+        """
+        Initializes a Item object
+        Args:
+            Name (String): Name of the Item
+            Quantity (int): Quantity of an Item
+        """
         if quantity < 0:
             raise Exception('Quantity is negative value')
         self.name = name
@@ -145,22 +189,31 @@ class Item(object):
     def removeQuantity(self, quantity):
         self.quantity -= quantity
 
-    def toString(self, name):
-        return f"{name:<30} Quantity: {self.quantity}"
+    def toString(self):
+        id = "Item: " + self.name
+        return f"{id:<30} Quantity: {self.quantity}"
 
     def printItem(self):
-        id = "Item: " + self.name
-        print(self.toString(id))
+        print(self.toString())
 
 class Appliance(Item):
     '''
     Appliance is a inventory item.
     '''
     def __init__(self, name: str, quantity: int):
+        """
+        Initializes a Appliance object
+        Args:
+            Name (String): Name of the Item
+            Quantity (int): Quantity of an Item
+        """
         super().__init__(name, quantity)
         self.status = 0
 
     def changeInUseStatus(self, in_use_no: int):
+        """
+        Changes the number of this Item In Use
+        """
         if in_use_no > self.quantity:
             raise Exception("No more of this Appliance available")
         if in_use_no < 0:
@@ -169,6 +222,9 @@ class Appliance(Item):
             self.status = in_use_no
 
     def getStatus(self):
+        """
+        Gets the current status
+        """
         if(self.status > 0):
             if(self.quantity > 1):
                 return str(self.status) + "/" + str(self.quantity) + " In Use"
@@ -177,11 +233,17 @@ class Appliance(Item):
         else:
             return "Not In Use"
 
-    def printItem(self):
+    def toString(self):
         id = "Appliance: " + self.name
-        print(self.toString(id), "\t" + self.getStatus())
+        return f"{id:<30} Quantity: {self.quantity}" + "\t" + self.getStatus()
+
+    def printItem(self):
+        print(self.toString())
 
 class Size(Enum):
+    '''
+    Size of the tools.
+    '''
     Small = 1
     Medium = 2
     Large = 3
@@ -191,21 +253,38 @@ class Tool(Item):
     Tool is a inventory item.
     '''
     def __init__(self, name: str, quantity: int, size: int):
+        """
+        Initializes a Appliance object
+        Args:
+            Name (String): Name of the Item
+            Quantity (int): Quantity of an Item
+            Size (Enum-int): Size of the Item
+        """
         super().__init__(name, quantity)
         self.size = size
 
     def changeSize(self, size):
         self.size = size
 
-    def printItem(self):
+    def toString(self):
         id = "Tool: " + "(" + self.size.name + ") " + self.name
-        print(self.toString(id))
+        return f"{id:<30} Quantity: {self.quantity}"
+
+    def printItem(self):
+        print(self.toString())
 
 class Ingredient(Item):
     '''
     Ingredient is a inventory item.
     '''
     def __init__(self, name: str, quantity: int, ounces: int):
+        """
+        Initializes a Appliance object
+        Args:
+            Name (String): Name of the Item
+            Quantity (int): Quantity of an Item
+            Ounces (int): Ounces of the Item
+        """
         if ounces != 0 and quantity != 1:
             raise Exception('Quantity cannot be anything but 1 when Ounces is non-zero')
         if ounces < 0:
@@ -222,12 +301,15 @@ class Ingredient(Item):
     def subtractOunces(self, ounces: int):
         self.ounces -= ounces
 
-    def printItem(self):
+    def toString(self):
         id = "Ingredient: " + self.name
         if self.ounces!=0:
-            print(self.toString(id), "\tOunces:", self.ounces)
+            return f"{id:<30} Quantity: {self.quantity}" + "\tOunces: " + str(self.ounces)
         else:
-            print(self.toString(id))
+            return f"{id:<30} Quantity: {self.quantity}"
+
+    def printItem(self):
+        print(self.toString())
 
 
 
@@ -250,4 +332,4 @@ invent.addIngredient("Tomatoe Sauce", 1, 5)
 invent.addIngredient("Meatballs", 10, 0)
 invent.addIngredient("Kale", 1, 6)
 invent.removeIngredient("Kale", 1, 6)
-invent.printInventory()
+#invent.printInventory()
