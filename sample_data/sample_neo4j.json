@@ -1,0 +1,33 @@
+{
+    "graph": {
+        "nodes": [
+            { "id": "fruit", "labels": ["IngredientCategory"], "properties": {} },
+            { "id": "vegetable", "labels": ["IngredientCategory"], "properties": {} },
+            { "id": "pasta", "labels": ["RecipeCategory"], "properties": {} },
+            { "id": "meat", "labels": ["IngredientCategory"], "properties": {} },
+            { "id": "onion", "labels": ["Ingredient", "IngredientCategory"], "properties": {} },
+            { "id": "herb", "labels": ["IngredientCategory"], "properties": {} },
+            { "id": "white_onion", "labels": ["Ingredient"], "properties": {} },
+            { "id": "spaghetti_and_meatballs", "labels": ["Recipe"], "properties": {} },
+            { "id": "ground_beef", "labels": ["Ingredient"], "properties": {} },
+            { "id": "tomato", "labels": ["Ingredient"], "properties": {} },
+            { "id": "spaghetti", "labels": ["Ingredient", "Recipe"], "properties": {} },
+            { "id": "oregano", "labels": ["Ingredient"], "properties": {} }
+        ],
+        "relationships": [
+            { "type": "IS_A", "startNode": "white_onion", "endNode": "onion", "properties": {} },
+            { "type": "IS_A", "startNode": "white_onion", "endNode": "vegetable", "properties": {} },
+            { "type": "IS_A", "startNode": "onion", "endNode": "vegetable", "properties": {} },
+            { "type": "IS_A", "startNode": "tomato", "endNode": "vegetable", "properties": {} },
+            { "type": "IS_A", "startNode": "tomato", "endNode": "fruit", "properties": {} },
+            { "type": "IS_A", "startNode": "spaghetti", "endNode": "pasta", "properties": {} },
+            { "type": "IS_A", "startNode": "ground_beef", "endNode": "meat", "properties": {} },
+            { "type": "IS_A", "startNode": "oregano", "endNode": "herb", "properties": {} },
+            { "type": "CONTAINS", "startNode": "spaghetti_and_meatballs", "endNode": "spaghetti", "properties": {} },
+            { "type": "CONTAINS", "startNode": "spaghetti_and_meatballs", "endNode": "tomato", "properties": {} },
+            { "type": "CONTAINS", "startNode": "spaghetti_and_meatballs", "endNode": "oregano", "properties": {} },
+            { "type": "CONTAINS", "startNode": "spaghetti_and_meatballs", "endNode": "ground_beef", "properties": {} },
+            { "type": "CONTAINS", "startNode": "spaghetti_and_meatballs", "endNode": "white_onion", "properties": {} }
+        ]
+    }
+}
