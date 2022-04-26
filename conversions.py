@@ -4,6 +4,7 @@ class Metric_Type(Enum):
     '''
     Metric Types.
     '''
+    no_metric = 0
     dry_volume = 1
     liquid_volume = 2
     length = 3
@@ -17,6 +18,7 @@ class Metric():
         self.ratio = ratio
 
 metrics = {
+    'empty': Metric('', Metric_Type.no_metric, 1),
     'smidgens': Metric('smidgen', Metric_Type.dry_volume, 32),
     'pinches': Metric('pinch', Metric_Type.dry_volume, 16),
     'dashes': Metric('dash', Metric_Type.dry_volume, 8),
@@ -43,7 +45,7 @@ metrics = {
 }
 
 def is_in_index(name):
-    if get_index(name) != None:
+    if get_index(name) != 'empty':
         return True
     return False
 
@@ -53,7 +55,7 @@ def get_index(name):
             return key
         if value.singular in name:
             return key
-    return None
+    return 'empty'
 
 
 dry_volume_base_unit = "teaspoons"

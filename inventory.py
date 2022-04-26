@@ -33,12 +33,12 @@ class Inventory:
         else:
             self.tool_dict[key_name].addQuantity(quantity)
 
-    def addIngredient(self, name: str, quantity: int, metric: str):
+    def addIngredient(self, name: str, quantity: int, metric: str, modifier: str):
         """
         Adds an ingredient to the ingredient list OR updates quantity or ounces of ingredient
         """
         # Create ingredient to sanatize quantity and ounces
-        ingredient = Ingredient(name, quantity, metric)
+        ingredient = Ingredient(name, quantity, metric, modifier)
         if name not in self.ingredient_dict.keys():
             self.ingredient_dict[name] = ingredient
 
@@ -283,24 +283,29 @@ class Ingredient(Item):
     '''
     Ingredient is a inventory item.
     '''
-    def __init__(self, name: str, quantity: int, metric: str):
+    def __init__(self, name: str, quantity: int, metric: str, modifier:str):
         """
         Initializes a Appliance object
         Args:
             Name (String): Name of the Item
             Quantity (int): Quantity of an Item
             Metric (String): Metric type
+            Modifier (String): A modifier to ingredient
         """
 
         super().__init__(name, quantity)
         self.metric = metric
+        self.modifier = modifier
 
     def updateMetric(self, metric: int):
         self.metric = metric
 
+    def updateModifier(self, modifier: int):
+        self.modifier = modifier
+
     def toString(self):
         id = "Ingredient: " + self.name
-        return f"{id:<30} Quantity: {self.quantity}" + "\tMetric: " + str(self.metric)
+        return f"{id:<30} Quantity: {self.quantity}" + "\tMetric: " + self.metric + "\tMOD " + self.modifier
 
     def printItem(self):
         print(self.toString())

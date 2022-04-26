@@ -2,10 +2,13 @@ from conversions import *
 from inventory import *
 from recipe_book import *
 from recipe_request import *
+import re
 
 printable_fracts = {'\u00BE': 0.75, '3/4': 0.75, '\u2154': 0.6667, '2/3': 0.6667,
 '\u00BD': 0.5, '1/2': 0.5, '\u2153': 0.3334, '1/3': 0.3334, '\u00BC': 0.25,
 '1/4': 0.25, '\u215B' : 0.125, '1/8': 0.125, '1/16': 0.0625, '1/32': 0.03125, '1/64': 0.015625}
+
+premod_list = ['chopped', 'package', 'packed', 'squares', 'diced', 'fresh', 'can', 'canned', 'cans', 'packages', 'packs', 'packet', 'jars', 'cooked', 'peeled and cooked', 'containers', 'finely chopped', 'pitted', 'quartered', ]
 def replace(number):
     if(number in printable_fracts.keys()):
         return float(printable_fracts[number])
@@ -17,6 +20,28 @@ def get_quantity(quantity_string):
         return replace(spleet[0]) * replace(spleet[1].strip("("))
     return replace(quantity_string)
 
+def get_modifiers(ingredient):
+    split_ingredient = ""
+    modifier = ""
+    premod = ingredient.split()[0]
+    if premod in premod_list:
+        modifier += premod + " "
+        ingredient = ingredient[len(premod)+1:]
+    parens = re.match("([^\(]+)(\([^\)]+\))?([^\(\)]+)?", ingredient)
+
+    if parens.groups()[1] != None:
+        split_ingredient += parens.groups()[0]
+        modifier += parens.groups()[1].strip()
+        if parens.groups()[2] != None:
+            split_ingredient += parens.groups()[2]
+    else:
+        split_ingredient = ingredient
+
+    spleet = split_ingredient.split(",_")
+    if len(spleet) > 1:
+        modifier +=  spleet[1]
+        split_ingredient += spleet[0]
+    return modifier.strip(), split_ingredient.strip()
 
 def add_ingredients(invent, ingredients_unparsed):
     for ingredient_unparsed in ingredients_unparsed:
@@ -28,8 +53,8 @@ def add_ingredients(invent, ingredients_unparsed):
 
                     metric_name = get_index(word)
                     ingredient = halves[1].strip()
-
-                    invent.addIngredient(ingredient, quantity, metric_name)
+                    modifier, f_ingredient = get_modifiers(ingredient)
+                    invent.addIngredient(f_ingredient, quantity, metric_name, modifier)
                     # print("Quantity: ", quantity)
                     # print("Metric: ", metric_name)
                     # print("Ingredient: ", ingredient)
@@ -71,6 +96,7 @@ def format_recipe(json_entry):
     recipe = Recipe(title, instr_set, invent, Recipe_ID("", "", ""), url) #TODO Recipe_ID
     return recipe
 
-json_entry = {"title": "Cathedral Window Holiday Bars","time": 0,"yeilds": "2 serving(s)","ingredients": ["1 cup butter","1 cup packed brown sugar","2 eggs","2 cups all-purpose flour","\u00bd teaspoon salt","8 (1 ounce) squares German sweet chocolate","\u00bd cup butter","2 cups confectioners' sugar","2 eggs","1 (10.5 ounce) package rainbow colored miniature marshmallows","1 cup chopped pecans"],"instructions": "Preheat oven to 350 degrees F (180 degrees C).\nMix 1 cup butter, 1 cup brown sugar and 2 eggs. Stir in 2 cups flour and 1/2 teaspoon salt. Press in ungreased 9 x 13 pan.\nBake for 25 minutes. Let cool.\nHeat chocolate and 1/2 cup butter over low heat, stirring constantly until melted. Remove from heat.\nStir in 2 cups powdered sugar and 2 eggs. Beat until smooth. Stir in marshmallows and pecans. Spread mixture over cookie-base. Refrigerate 2 hours. Cut into bars.","url": "https://www.allrecipes.com/recipe/10054"}
-json_entry = get_recipe('Meatloaf')
+#json_entry = {"title": "Cathedral Window Holiday Bars","time": 0,"yeilds": "2 serving(s)","ingredients": ["1 cup butter","1 cup packed brown sugar","2 eggs","2 cups all-purpose flour","\u00bd teaspoon salt","8 (1 ounce) squares German sweet chocolate","\u00bd cup butter","2 cups confectioners' sugar","2 eggs","1 (10.5 ounce) package rainbow colored miniature marshmallows","1 cup chopped pecans"],"instructions": "Preheat oven to 350 degrees F (180 degrees C).\nMix 1 cup butter, 1 cup brown sugar and 2 eggs. Stir in 2 cups flour and 1/2 teaspoon salt. Press in ungreased 9 x 13 pan.\nBake for 25 minutes. Let cool.\nHeat chocolate and 1/2 cup butter over low heat, stirring constantly until melted. Remove from heat.\nStir in 2 cups powdered sugar and 2 eggs. Beat until smooth. Stir in marshmallows and pecans. Spread mixture over cookie-base. Refrigerate 2 hours. Cut into bars.","url": "https://www.allrecipes.com/recipe/10054"}
+
+json_entry = get_recipe('Meatballs')
 print(format_recipe(json_entry).toString())
