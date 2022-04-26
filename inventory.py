@@ -33,19 +33,14 @@ class Inventory:
         else:
             self.tool_dict[key_name].addQuantity(quantity)
 
-    def addIngredient(self, name: str, quantity: int, ounces: int):
+    def addIngredient(self, name: str, quantity: int, metric: str):
         """
         Adds an ingredient to the ingredient list OR updates quantity or ounces of ingredient
         """
         # Create ingredient to sanatize quantity and ounces
-        ingredient = Ingredient(name, quantity, ounces)
+        ingredient = Ingredient(name, quantity, metric)
         if name not in self.ingredient_dict.keys():
             self.ingredient_dict[name] = ingredient
-        # Ingredients can either have quantity or ounces. This will update quantity or ounces
-        elif self.ingredient_dict[name].ounces == 0:
-            self.ingredient_dict[name].addQuantity(quantity)
-        else:
-            self.ingredient_dict[name].addOunces(ounces)
 
     def hasAppliance(self, name: str):
         """
@@ -273,63 +268,62 @@ class Tool(Item):
     def printItem(self):
         print(self.toString())
 
+class Metric(Enum):
+    '''
+    Size of the tools.
+    '''
+    ounce = 1
+    cup = 2
+    tbsp = 3
+    tsp = 4
+    inch = 5
+
+
 class Ingredient(Item):
     '''
     Ingredient is a inventory item.
     '''
-    def __init__(self, name: str, quantity: int, ounces: int):
+    def __init__(self, name: str, quantity: int, metric: str):
         """
         Initializes a Appliance object
         Args:
             Name (String): Name of the Item
             Quantity (int): Quantity of an Item
-            Ounces (int): Ounces of the Item
+            Metric (String): Metric type
         """
-        if ounces != 0 and quantity != 1:
-            raise Exception('Quantity cannot be anything but 1 when Ounces is non-zero')
-        if ounces < 0:
-            raise Exception('Ounces negative value')
+
         super().__init__(name, quantity)
-        self.ounces = ounces
+        self.metric = metric
 
-    def updateOunces(self, ounces: int):
-        self.ounces = ounces
-
-    def addOunces(self, ounces: int):
-        self.ounces += ounces
-
-    def subtractOunces(self, ounces: int):
-        self.ounces -= ounces
+    def updateMetric(self, metric: int):
+        self.metric = metric
 
     def toString(self):
         id = "Ingredient: " + self.name
-        if self.ounces!=0:
-            return f"{id:<30} Quantity: {self.quantity}" + "\tOunces: " + str(self.ounces)
-        else:
-            return f"{id:<30} Quantity: {self.quantity}"
+        return f"{id:<30} Quantity: {self.quantity}" + "\tMetric: " + str(self.metric)
 
     def printItem(self):
         print(self.toString())
 
 
 
-invent = Inventory()
-invent.addAppliance("Oven", 2)
-invent.addAppliance("Microwave", 1)
-invent.addAppliance("Stove", 1)
-
-invent.useAppliance("Oven", 2)
-invent.useAppliance("Stove", 1)
-invent.releaseAppliance("Oven", 1)
-
-invent.addTool("Pan", 1, Size.Small)
-invent.addTool("Saucepan", 1, Size.Medium)
-invent.addTool("Pot", 1, Size.Large)
-invent.addTool("Saucepan", 1, Size.Small)
-
-invent.addIngredient("Dry Spaghetti", 1, 10)
-invent.addIngredient("Tomatoe Sauce", 1, 5)
-invent.addIngredient("Meatballs", 10, 0)
-invent.addIngredient("Kale", 1, 6)
-invent.removeIngredient("Kale", 1, 6)
+# invent = Inventory()
+# invent.addAppliance("Oven", 2)
+# invent.addAppliance("Microwave", 1)
+# invent.addAppliance("Stove", 1)
+#
+# invent.useAppliance("Oven", 2)
+# invent.useAppliance("Stove", 1)
+# invent.releaseAppliance("Oven", 1)
+#
+# invent.addTool("Pan", 1, Size.Small)
+# invent.addTool("Saucepan", 1, Size.Medium)
+# invent.addTool("Pot", 1, Size.Large)
+# invent.addTool("Saucepan", 1, Size.Small)
+#
+# invent.addIngredient("Dry Spaghetti", 1, 10)
+# invent.addIngredient("Tomatoe Sauce", 1, 5)
+# invent.addIngredient("Meatballs", 10, 0)
+# invent.addIngredient("Kale", 1, 6)
+# invent.removeIngredient("Kale", 1, 6)
 #invent.printInventory()
