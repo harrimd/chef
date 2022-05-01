@@ -18,7 +18,7 @@ class Metric():
         self.ratio = ratio
 
 metrics = {
-    'empty': Metric('', Metric_Type.no_metric, 1),
+    '': Metric('', Metric_Type.no_metric, 1),
     'smidgens': Metric('smidgen', Metric_Type.dry_volume, 32),
     'pinches': Metric('pinch', Metric_Type.dry_volume, 16),
     'dashes': Metric('dash', Metric_Type.dry_volume, 8),
@@ -44,12 +44,12 @@ metrics = {
     'pounds':  Metric('pound', Metric_Type.weight, 0.0625)
 }
 
-def is_in_index(name):
-    if get_index(name) != 'empty':
+def isInIndex(name):
+    if getIndex(name) != 'empty':
         return True
     return False
 
-def get_index(name):
+def getIndex(name):
     for key, value in metrics.items():
         if key in name:
             return key
@@ -67,7 +67,7 @@ fractions = [0.75, 0.6667, 0.5, 0.3334, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 
 printable_fracts = ['', '\u00BE', '\u2154', '\u00BD', '\u2153', '\u00BC', '\u215B', '1/16', '1/32', '1/64', '']
 
 #TODO: Quanitity conversion printing
-def conversion_rounding(num):
+def conversionRounding(num):
     stripped = int(num)
     deci = num - stripped
     if deci == 0:
@@ -90,17 +90,17 @@ def conversion_rounding(num):
         return '0'
     return converted
 
-def convert_to_base(num, metric):
+def convertToBase(num, metric):
     ratio = metrics[metric].ratio
     conversion = num / ratio
     return conversion
 
-def convert_from_base(num, new_metric):
+def convertFromBase(num, new_metric):
     ratio = metrics[new_metric].ratio
     conversion = num * ratio
     return conversion
 
-def convert_num(num, metric, new_metric):
+def convertNum(num, metric, new_metric):
     if(metrics[metric].metric_type != metrics[new_metric].metric_type):
         if (metrics[metric].metric_type == Metric_Type.liquid_volume and new_metric == 'cups'):
             new_metric = 'liquid cups'
@@ -108,13 +108,15 @@ def convert_num(num, metric, new_metric):
             metric = 'liquid cups'
         else:
             raise Exception("Incompatable metric types")
-    base_num = convert_to_base(num, metric)
-    new_num = convert_from_base(base_num, new_metric)
+    base_num = convertToBase(num, metric)
+    new_num = convertFromBase(base_num, new_metric)
+    return new_num
+
+def convertNumString(num, metric, new_metric):
+    new_num = convertNum(num, metric, new_metric)
     if (metrics[metric].metric_type == Metric_Type.dry_volume or metrics[metric].metric_type == Metric_Type.liquid_volume):
-        return conversion_rounding(new_num)
+        return conversionRounding(new_num)
     return str(round(new_num, 2))
-
-
 # m1 = 'kilograms'
 # m2 = 'grams'
 # m3 = 'quarts'

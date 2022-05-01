@@ -1,4 +1,5 @@
 from enum import Enum
+import conversions
 
 class Inventory:
     '''
@@ -35,12 +36,17 @@ class Inventory:
 
     def addIngredient(self, name: str, quantity: int, metric: str, modifier: str):
         """
-        Adds an ingredient to the ingredient list OR updates quantity or ounces of ingredient
+        Adds an ingredient to the ingredient list OR updates quantity or metric of ingredient
         """
-        # Create ingredient to sanatize quantity and ounces
+        # Create ingredient to sanatize quantity and metric
         ingredient = Ingredient(name, quantity, metric, modifier)
         if name not in self.ingredient_dict.keys():
             self.ingredient_dict[name] = ingredient
+        elif self.ingredient_dict[name].metric == metric:
+            self.ingredient_dict[name].addQuantity(quantity)
+        else:
+            converted_quantity = conversions.convertNum(quantity, metric, self.metric)
+            self.ingredient_dict[name].addQuantity(converted_quantity)
 
     def hasAppliance(self, name: str):
         """
@@ -68,7 +74,7 @@ class Inventory:
         if name not in self.appliance_dict.keys():
             raise Exception('Cannot remove Appliance that does not exist')
         else:
-            self.appliance_dict[name].subtractQuantity(quantity)
+            self.appliance_dict[name].removeQuantity(quantity)
             if self.appliance_dict[name].quantity <= 0:
                 del self.appliance_dict[name]
 
@@ -80,26 +86,25 @@ class Inventory:
         if key_name not in self.tool_dict.keys():
             raise Exception('Cannot remove Tool that does not exist')
         else:
-            self.tool_dict[key_name].subtractQuantity(quantity)
+            self.tool_dict[key_name].removeQuantity(quantity)
             if self.tool_dict[key_name].quantity <= 0:
                 del self.tool_dict[name]
 
-    def removeIngredient(self, name: str, quantity: int, ounces: int):
+    def removeIngredient(self, name: str, quantity: int, metric: str):
         """
         Removes an ingredient from the list OR updates the quantity of ingredients
         """
-        # Create ingredient to sanatize quantity and ounces
-        ingredient = Ingredient(name, quantity, ounces)
+        # Create ingredient to sanatize quantity and metric
         if name not in self.ingredient_dict.keys():
             raise Exception('Cannot remove Ingredient that does not exist')
-        # Ingredients can either have quantity or ounces. This will update quantity or ounces
-        elif self.ingredient_dict[name].ounces == 0:
-            self.ingredient_dict[name].subtractQuantity(quantity)
+        elif self.ingredient_dict[name].metric == metric:
+            self.ingredient_dict[name].removeQuantity(quantity)
             if self.ingredient_dict[name].quantity <= 0:
                 del self.ingredient_dict[name]
         else:
-            self.ingredient_dict[name].subtractOunces(ounces)
-            if self.ingredient_dict[name].ounces <= 0:
+            converted_quantity = conversions.convertNum(quantity, metric, self.metric)
+            self.ingredient_dict[name].removeQuantity(converted_quantity)
+            if self.ingredient_dict[name].quantity  <= 0:
                 del self.ingredient_dict[name]
 
     def useAppliance(self, name: str, in_use_status: int):
@@ -121,6 +126,42 @@ class Inventory:
         else:
             sub_status = self.appliance_dict[name].status - in_use_status
             self.appliance_dict[name].changeInUseStatus(sub_status)
+
+    def hasRequiredInventory(self, inventory_query):
+        """
+        Sees if the inventory query is in current inventory
+        Just currently deals with ingredients
+        """
+        for key in inventory_query.ingredient_dict.keys():
+            if key in self.ingredient_dict.keys():
+                quantity = inventory_query.ingredient_dict[key].quantity
+                metric = inventory_query.ingredient_dict[key].metric
+                if not self.ingredient_dict[key].enoughForRecipe(quantity, metric):
+                    return False
+            else:
+                return False
+        return True
+
+    def claimInventory(self, inventory_claim):
+        """
+        Claims inventory for a recipe as requested.
+        """
+        if self.hasRequiredInventory(inventory_claim) == False:
+            return False
+        for key in inventory_claim.ingredient_dict.keys():
+            quantity = inventory_claim.ingredient_dict[key].quantity
+            metric = inventory_claim.ingredient_dict[key].metric
+            self.ingredient_dict[key].claimItem(quantity, metric)
+        return True
+
+    def unClaimInventory(self, inventory_claim):
+        """
+        Unclaims inventory for a unused recipe.
+        """
+        for key in inventory_claim.ingredient_dict.keys():
+            quantity = inventory_claim.ingredient_dict[key].quantity
+            metric = inventory_claim.ingredient_dict[key].metric
+            self.ingredient_dict[key].unClaimItem(quantity, metric)
 
     def loadInventory(self, filename):
         """
@@ -303,32 +344,33 @@ class Ingredient(Item):
     def updateModifier(self, modifier: int):
         self.modifier = modifier
 
+    def enoughForRecipe(self, quantity: int, metric: str):
+        if self.metric == metric and self.quantity >= quantity:
+            return True
+        converted_quantity = conversions.convertNum(quantity, metric, self.metric)
+        if self.quantity >= converted_quantity:
+            return True
+        return False
+
+    def claimItem(self, quantity: int, metric: str):
+        if self.metric == metric:
+            self.removeQuantity(quantity)
+        else:
+            converted_quantity = conversions.convertNum(quantity, metric, self.metric)
+            self.removeQuantity(converted_quantity)
+
+    def unClaimItem(self, quantity: int, metric: str):
+        if self.metric == metric:
+            self.addQuantity(quantity)
+        else:
+            converted_quantity = conversions.convertNum(quantity, metric, self.metric)
+            self.addQuantity(converted_quantity)
+
     def toString(self):
         id = "Ingredient: " + self.name
-        return f"{id:<30} Quantity: {self.quantity}" + "\tMetric: " + self.metric + "\tMOD " + self.modifier
+        if self.modifier != None:
+            id += " " + self.modifier
+        return f"{id:<40} Quantity: {self.quantity}" + "\tMetric: " + self.metric
 
     def printItem(self):
         print(self.toString())
-
-
-
-# invent = Inventory()
-# invent.addAppliance("Oven", 2)
-# invent.addAppliance("Microwave", 1)
-# invent.addAppliance("Stove", 1)
-#
-# invent.useAppliance("Oven", 2)
-# invent.useAppliance("Stove", 1)
-# invent.releaseAppliance("Oven", 1)
-#
-# invent.addTool("Pan", 1, Size.Small)
-# invent.addTool("Saucepan", 1, Size.Medium)
-# invent.addTool("Pot", 1, Size.Large)
-# invent.addTool("Saucepan", 1, Size.Small)
-#
-# invent.addIngredient("Dry Spaghetti", 1, 10)
-# invent.addIngredient("Tomatoe Sauce", 1, 5)
-# invent.addIngredient("Meatballs", 10, 0)
-# invent.addIngredient("Kale", 1, 6)
-# invent.removeIngredient("Kale", 1, 6)
-#invent.printInventory()

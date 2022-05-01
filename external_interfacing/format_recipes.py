@@ -1,7 +1,7 @@
 from conversions import *
 from inventory import *
 from recipe_book import *
-from recipe_request import *
+from external_recipe_request import *
 import re
 
 printable_fracts = {'\u00BE': 0.75, '3/4': 0.75, '\u2154': 0.6667, '2/3': 0.6667,

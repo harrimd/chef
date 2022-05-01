@@ -12,19 +12,41 @@ class RecipeBook:
         """
         Initializes a recipe dictionary
         """
-        self.recipes_dict = {}
+        self.recipe_dict = {}
 
     def addRecipe(self, recipe):
-        if recipe.name in recipes_dict:
+        if recipe.name in self.recipe_dict.keys():
             raise Exception("Recipe exists in Recipebook")
         else:
-            self.recipes_dict[recipe.name] = recipe
+            self.recipe_dict[recipe.name] = recipe
 
     def removeRecipe(self, name):
-        if name not in recipes_dict:
+        if name not in self.recipe_dict.keys():
             raise Exception("Recipe does not exist in Recipebook")
         else:
-            del self.recipes_dict[name]
+            del self.recipe_dict[name]
+
+    def recommendRecipes(self, current_inventory):
+        """
+        Returns a list of recommended recipes for the user's inventory
+        @WENTAU Populate this function with prefered recommending system
+        """
+        recommends = []
+        available = self.availableRecipes(current_inventory)
+        for recipe in available:
+            recommends.append(recipe)
+        return recommends
+
+    def availableRecipes(self, current_inventory):
+        """
+        Returns lists of all recipes that a user can make with there given inventory
+        """
+        available = []
+        for key in self.recipe_dict.keys():
+            has_recipe = current_inventory.hasRequiredInventory(self.recipe_dict[key].inventory)
+            if has_recipe:
+                available.append(self.recipe_dict[key])
+        return available
 
     def loadRecipeBook(self, filename):
         """
@@ -43,7 +65,7 @@ class Recipe(object):
     Base class for a Recipe.
     '''
 
-    def __init__(self, name: str, instructions, inventory, id, url):
+    def __init__(self, name: str, instructions, inventory, id):
         """
         Initializes a recipe
         Args:
@@ -57,7 +79,6 @@ class Recipe(object):
         self.instructions = instructions
         self.inventory = inventory
         self.id = id
-        self.url = url
 
     def updateName(self, name):
         self.name = name
@@ -129,11 +150,11 @@ class InstructionSet(object):
             count += 1
         return instr_string
 
-class Recipe_ID(object):
+class RecipeID(object):
     '''
     Base class for an Recipe Identification
     '''
-    def __init__(self, classification: str, category: str, origin):
+    def __init__(self, classification: str, category: str, origin, url: str):
         """
         Initializes a Recipe_ID
         Args:
@@ -144,6 +165,7 @@ class Recipe_ID(object):
         self.classification = classification
         self.category = category
         self.origin = origin
+        self.url = url
 
     def toString(self):
         id_string = ""
@@ -153,24 +175,6 @@ class Recipe_ID(object):
             id_string += "Category: " + self.category + "\n"
         if self.origin != None:
             id_string += "Origin: " + self.origin + "\n"
+        if self.url != None:
+            id_string += "URL: " + self.url + "\n"
         return id_string
-
-
-# invent = inventory.Inventory()
-# invent.addAppliance("Stove", 1)
-# invent.addTool("Pot", 1, Size.Medium)
-# invent.addTool("Saucepan", 1, Size.Medium)
-# invent.addIngredient("Dry Spaghetti", 1, 10)
-# invent.addIngredient("Tomatoe Sauce", 1, 5)
-# invent.addIngredient("Meatballs", 10, 0)
-#
-# instr_set = InstructionSet(0, [], [])
-# instr_set.updateCooktime(30)
-# instr_set.updatePreplist(["Boil salted water in a Pot on the Stove"])
-# instr_set.updateSteplist(["Heat sauce and meatballs in a Pan", "Put pasta in boiling water", "After 8 mins of cooking, add the strained pasta to the heated sauce and meatballs"])
-#
-# recipe = Recipe("Spaghetti and Meatballs",
-#                 instr_set,
-#                 invent,
-#                 Recipe_ID("Pasta Dish", "Entree", "Italian"))
-#print(recipe.toString())
