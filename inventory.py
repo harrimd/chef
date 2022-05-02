@@ -23,11 +23,13 @@ class Inventory:
         else:
             self.appliance_dict[name].addQuantity(quantity)
 
-    def addTool(self, name: str, quantity: int, size: int):
+    def addTool(self, name: str, quantity: int, size):
         """
         Adds a tool to the tool list OR updates quantity of tools
         """
         # key_name is used to seperate sizes of tools in the dictionary
+        if not isinstance(size, Size):
+            size = loadSize(size)
         key_name = size.name + " " + name
         if key_name not in self.tool_dict.keys():
             self.tool_dict[key_name] = Tool(name, quantity, size)
@@ -179,17 +181,37 @@ class Inventory:
             metric = inventory_claim.ingredient_dict[key].metric
             self.ingredient_dict[key].unClaimItem(quantity, metric)
 
-    def loadInventory(self, filename):
+    def loadSerializedInventory(self, serialized):
         """
         Loads an Invetory from a file
         """
-        print("TODO")
+        for appliance_name in serialized['Appliances'].keys():
+            quantity = serialized['Appliances'][appliance_name]
+            self.addAppliance(appliance_name, quantity)
+        for ingredient_name in serialized['Ingredients'].keys():
+            quantity, metric, modifier = serialized['Ingredients'][ingredient_name]
+            self.addIngredient(ingredient_name, quantity, metric, modifier)
+        for tool_name in serialized['Tools'].keys():
+            quantity, size = serialized['Tools'][tool_name]
+            self.addTool(tool_name, quantity, size)
 
-    def saveInventory(self, filename):
+    def serialize(self):
         """
-        Saves an Inventory to a file
+        Serializes inventory
         """
-        print("TODO")
+        serial_inventory = {}
+        serial_inventory['Inventory'] = {}
+        serial_inventory['Inventory']['Appliances'] = {}
+        for appliance_name in self.appliance_dict.keys():
+            serial_inventory['Inventory']['Appliances'].update(self.appliance_dict[appliance_name].serialize())
+        serial_inventory['Inventory']['Ingredients'] = {}
+        for ingredient_name in self.ingredient_dict.keys():
+            serial_inventory['Inventory']['Ingredients'].update(self.ingredient_dict[ingredient_name].serialize())
+        serial_inventory['Inventory']['Tools'] = {}
+        for tool_name in self.tool_dict.keys():
+            serial_inventory['Inventory']['Tools'].update(self.tool_dict[tool_name].serialize())
+        return serial_inventory
+
 
     def toString(self):
         """
@@ -241,6 +263,11 @@ class Item(object):
     def removeQuantity(self, quantity):
         self.quantity -= quantity
 
+    def serialize(self):
+        serial = {}
+        serial[self.name] = self.quantity
+        return serial
+
     def toString(self):
         id = "Item: " + self.name
         return f"{id:<30} Quantity: {self.quantity}"
@@ -285,6 +312,11 @@ class Appliance(Item):
         else:
             return "Not In Use"
 
+    def serialize(self):
+        serial = {}
+        serial[self.name] = self.quantity
+        return serial
+
     def toString(self):
         id = "Appliance: " + self.name
         return f"{id:<30} Quantity: {self.quantity}" + "\t" + self.getStatus()
@@ -299,6 +331,18 @@ class Size(Enum):
     Small = 1
     Medium = 2
     Large = 3
+
+def loadSize(integer_value):
+    '''
+    Loading size of int to size
+    '''
+    if integer_value == Size.Small.value:
+        return Size.Small
+    if integer_value == Size.Medium.value:
+        return Size.Medium
+    if integer_value == Size.Large.value:
+        return Size.Large
+    raise Exception("Not a size")
 
 class Tool(Item):
     '''
@@ -318,23 +362,17 @@ class Tool(Item):
     def changeSize(self, size):
         self.size = size
 
+    def serialize(self):
+        serial = {}
+        serial[self.name] = (self.quantity, self.size.value)
+        return serial
+
     def toString(self):
         id = "Tool: " + "(" + self.size.name + ") " + self.name
         return f"{id:<30} Quantity: {self.quantity}"
 
     def printItem(self):
         print(self.toString())
-
-class Metric(Enum):
-    '''
-    Size of the tools.
-    '''
-    ounce = 1
-    cup = 2
-    tbsp = 3
-    tsp = 4
-    inch = 5
-
 
 class Ingredient(Item):
     '''
@@ -381,6 +419,11 @@ class Ingredient(Item):
         else:
             converted_quantity = conversions.convertNum(quantity, metric, self.metric)
             self.addQuantity(converted_quantity)
+
+    def serialize(self):
+        serial = {}
+        serial[self.name] = (self.quantity, self.metric, self.modifier)
+        return serial
 
     def toString(self):
         id = "Ingredient: " + self.name

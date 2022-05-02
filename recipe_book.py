@@ -15,10 +15,7 @@ class RecipeBook:
         self.recipe_dict = {}
 
     def addRecipe(self, recipe):
-        if recipe.name in self.recipe_dict.keys():
-            raise Exception("Recipe exists in Recipebook")
-        else:
-            self.recipe_dict[recipe.name] = recipe
+        self.recipe_dict[recipe.name] = recipe
 
     def removeRecipe(self, name):
         if name not in self.recipe_dict.keys():
@@ -59,17 +56,35 @@ class RecipeBook:
                 availablity_scores[key] = invent_score
         return availablity_scores
 
+    def clearRecipeBook(self):
+        del self.recipe_dict
+        self.recipe_dict = {}
+
     def loadRecipeBook(self, filename):
         """
         Loads a recipebook from a file
         """
-        print("TODO")
+        read_file = open(filename, "r")
+        for line in read_file.readlines():
+            serial_recipe = json.loads(line)
+            for recipe_name in serial_recipe.keys():
+                recipe = Recipe(None, None, None, None)
+                recipe.load(recipe_name, serial_recipe[recipe_name])
+                self.addRecipe(recipe)
+        read_file.close()
+
 
     def saveRecipeBook(self, filename):
         """
         Saves a recipebook to a file
         """
-        print("TODO")
+        write_file = open(filename, "w")
+        for recipe_name in self.recipe_dict.keys():
+            serial_recipe = self.recipe_dict[recipe_name].serialize()
+            recipe_data = json.dumps(serial_recipe)
+            write_file.write(recipe_data)
+            write_file.write('\n')
+        write_file.close()
 
 class Recipe(object):
     '''
@@ -103,8 +118,28 @@ class Recipe(object):
     def updateID(self, id):
         self.id = id
 
-    def updateURL(self, url):
-        self.url = url
+    def load(self, name, serialized_recipe):
+        self.updateName(name)
+        instructions = InstructionSet(0, 0, None, None)
+        instructions.load(serialized_recipe['InstructionSet'])
+        self.updateInstructions(instructions)
+
+        rec_inventory = inventory.Inventory()
+        rec_inventory.loadSerializedInventory(serialized_recipe['Inventory'])
+        self.updateInventory(rec_inventory)
+
+        recipeID = RecipeID(None, None, None, None)
+        recipeID.load(serialized_recipe['RecipeID'])
+        self.updateID(recipeID)
+
+    def serialize(self):
+        inner_dict = {}
+        inner_dict.update(self.instructions.serialize())
+        inner_dict.update(self.inventory.serialize())
+        inner_dict.update(self.id.serialize())
+        serial = {}
+        serial[self.name] = inner_dict
+        return serial
 
     def toString(self):
         recipe_string = "Recipe: " + self.name + "\n"
@@ -145,6 +180,19 @@ class InstructionSet(object):
     def updateSteplist(self, steplist):
         self.steplist = steplist
 
+    def load(self, instruction_set):
+        cooktime, yields, preplist, steplist = instruction_set
+        self.updateCooktime(cooktime)
+        self.updateYields(yields)
+        self.updatePreplist(preplist)
+        self.updateSteplist(steplist)
+
+    def serialize(self):
+        serial = {}
+        serial['InstructionSet'] = (self.cooktime, self.yields, self.preplist, self.steplist)
+        return serial
+
+
     def toString(self):
         instr_string = "Cooktime " + str(self.cooktime) + "\n"
         instr_string += "Yields " + str(self.yields) + "\n"
@@ -177,6 +225,31 @@ class RecipeID(object):
         self.category = category
         self.origin = origin
         self.url = url
+
+    def updateClassification(self, classification):
+        self.classification = classification
+
+    def updateCategory(self, category):
+        self.category = category
+
+    def updateOrigin(self, origin):
+        self.origin = origin
+
+    def updateURL(self, url):
+        self.url = url
+
+    def load(self, recipe_id):
+        classification, category, origin, url = recipe_id
+        self.updateClassification(classification)
+        self.updateCategory(category)
+        self.updateOrigin(origin)
+        self.updateURL(url)
+
+    def serialize(self):
+        serial = {}
+        serial['RecipeID'] = (self.classification, self.category, self.origin, self.url)
+        return serial
+
 
     def toString(self):
         id_string = ""

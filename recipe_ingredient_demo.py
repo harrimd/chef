@@ -64,7 +64,14 @@ def main():
         # Unclaims items in inventory for a recipe
         current_inventory.unClaimInventory(recipe.inventory)
 
+    # We can save the recipes here
+    recipe_book.saveRecipeBook('sampleRecipe.json')
 
+    new_recipe_book = RecipeBook()
+    # We can load the recipes here
+    new_recipe_book.loadRecipeBook('sampleRecipe.json')
+    for recipe_name in new_recipe_book.recipe_dict.keys():
+        new_recipe_book.recipe_dict[recipe_name].printRecipe()
 
 def getSampleRecipe():
     """
