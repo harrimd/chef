@@ -26,27 +26,38 @@ class RecipeBook:
         else:
             del self.recipe_dict[name]
 
+    def getRecipe(self, name):
+        for key in self.recipe_dict.keys():
+            if key == name:
+                return self.recipe_dict[key]
+        return None
+
     def recommendRecipes(self, current_inventory):
         """
         Returns a list of recommended recipes for the user's inventory
-        @WENTAU Populate this function with prefered recommending system
+        @WENTAO Populate this function with prefered recommending system
         """
         recommends = []
-        available = self.availableRecipes(current_inventory)
-        for recipe in available:
-            recommends.append(recipe)
+        availablity_scores = self.getAvailablityScores(current_inventory)
+        for recipe_name in availablity_scores.keys():
+            if availablity_scores[recipe_name] == 1.0:
+                recommends.append(self.getRecipe(recipe_name))
         return recommends
 
-    def availableRecipes(self, current_inventory):
+    def getAvailablityScores(self, current_invent):
         """
         Returns lists of all recipes that a user can make with there given inventory
         """
-        available = []
+        availablity_scores = {}
         for key in self.recipe_dict.keys():
-            has_recipe = current_inventory.hasRequiredInventory(self.recipe_dict[key].inventory)
+            required_invent = self.recipe_dict[key].inventory
+            has_recipe = current_invent.hasRequiredInventory(required_invent)
             if has_recipe:
-                available.append(self.recipe_dict[key])
-        return available
+                availablity_scores[key] = 1.0
+            else:
+                invent_score = current_invent.requiredInventoryScore(required_invent)
+                availablity_scores[key] = invent_score
+        return availablity_scores
 
     def loadRecipeBook(self, filename):
         """

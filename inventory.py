@@ -142,6 +142,22 @@ class Inventory:
                 return False
         return True
 
+    def requiredInventoryScore(self, inventory_query):
+        """
+        Gives percentage of ingredients available for Inventory
+        """
+        available = 0
+        total = 0
+        for key in inventory_query.ingredient_dict.keys():
+            if key in self.ingredient_dict.keys():
+                quantity = inventory_query.ingredient_dict[key].quantity
+                metric = inventory_query.ingredient_dict[key].metric
+                if self.ingredient_dict[key].enoughForRecipe(quantity, metric):
+                    available += 1
+            total += 1
+        return available/total
+
+
     def claimInventory(self, inventory_claim):
         """
         Claims inventory for a recipe as requested.

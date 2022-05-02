@@ -51,7 +51,8 @@ def main():
     recipe_book.addRecipe(recipe)
 
     # A list of make-able recipes is returned with this function
-    available_list = recipe_book.availableRecipes(current_inventory)
+    available_list = recipe_book.getAvailablityScores(current_inventory)
+    print(available_list)
     # A list of reccommended recipes is returned with this function
     recommended_list = recipe_book.recommendRecipes(current_inventory)
 
