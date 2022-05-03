@@ -13,5 +13,5 @@ def create_recipe(self, recipe):
 @staticmethod
 def _create_and_return_recipe(tx, recipe):
     query = (
-        "CREATE (r1:Recipe { id: $recipe.id })"
+        "CREATE (r1:Recipe { name: $recipe.name })"
     )

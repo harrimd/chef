@@ -13,12 +13,12 @@ def create_ingredientCategory(category_name):
             
 def _create_and_return_ingredientCategory(tx, cn):
     query = (
-        "CREATE (c1:IngredientCategory { id: $cn })"
+        "CREATE (c1:IngredientCategory { name: $cn })"
         "RETURN c1"
     )
     result = tx.run(query, cn)
     try:
-        return [{"c1": row["c1"]["id"]}
+        return [{"c1": row["c1"]["name"]}
                 for row in result]
     except ServiceUnavailable as exception:
         logging.error("{query} raised an error: \n {exception}".format(
