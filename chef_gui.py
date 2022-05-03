@@ -43,7 +43,7 @@ def create_inner_box():
     # Inner frame for listing recipes
     inner_frame = Frame(border_frame, bg=GREY_BG_COLOR)
     inner_frame.pack(expand=True, fill='both', padx=border_size, pady=border_size)
-    border_frame.place(relx=.5, rely= .25, relheight=.7, relwidth=.9, anchor="n")
+    border_frame.place(relx=.5, rely= .25, relheight=.7, relwidth=.8, anchor="n")
     
     return border_frame, inner_frame
 
@@ -53,6 +53,18 @@ def bind_frame_and_children(frame, function):
     # Bind all the children too
     for wid in frame.winfo_children():
         wid.bind("<Button-1>", function)
+
+def create_left_right_arrows():
+    left_list_btn = Button(text="\u2190", font=("gabriola", 50), bg=DARK_BLUE_FRAME_BG, bd=2, fg="white", activebackground='#CED500')
+    left_list_btn.place(relx=0.01, rely=0.6, relheight=.18, anchor="w")
+
+    right_list_btn = Button(text="\u2192", font=("gabriola", 50), bg=DARK_BLUE_FRAME_BG, bd=2, fg="white", activebackground='#CED500')
+    right_list_btn.place(relx=0.99, rely=0.6, relheight=.18, anchor="e")
+
+    nodes.append(left_list_btn)
+    nodes.append(right_list_btn)
+
+    return left_list_btn, right_list_btn
 
 
 def changeTitle(test):
@@ -149,9 +161,15 @@ def create_shopping_list(going_back=False):
     nodes.append(border_color)
 
 
-def create_recipe_list(going_back=False):
-    reset_screen()
-    title_lbl.config(text = "Recipe List")
+def create_recipe_list(page=0, going_back=False, pass_through=None):
+    # First time into this page, so need to draw everything
+    if not pass_through:
+        reset_screen()
+        border_frame, recipes_frame = create_inner_box()
+    # Check lower bound on page
+    if page < 0:
+        page = 0
+    title_lbl.config(text = "Recipe List Page {}".format(page))
     if not going_back:
         BACK_STATE.append("recipe_list")
     
@@ -174,50 +192,60 @@ def create_recipe_list(going_back=False):
          "time": 1.5,
           "preparable": True}
     ]
-    
-    border_frame, recipes_frame = create_inner_box()
-    
-    recipe_blocks = []
-    for i in range(0, 5):
-        # Keep references to all objects
-        new_recipe_set = {}
-        # Change the top label colors for visibility
-        label_color = PURPLE_BUTTON_COLOR if i else "#B3388C"
-        # Each "recipe" will be a box in a row, not scrollable, but able to go left to right
-        entry_frame = Frame(recipes_frame, bg=DARK_BLUE_FRAME_BG)
-        entry_frame.place(relx=.5, rely=.04 + .19 * i, relheight=.15, relwidth=.95, anchor="n")
-        
-        new_recipe_set["frame"] = entry_frame
-        
-        # Now need to add the internal blocks
-        # Used for indexing for the name
-        label_names = ["Name", "Type", "Time"]
-        # Adding the first three labels on the left side
-        for j in range(0, 3):
-            new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
-                          font=("Gariola", 20), wraplength=200)
-            new_label.place(relx=.1 + .18 * j, rely=.1, relheight=.8, relwidth=.16, anchor='n')
-            new_recipe_set[label_names[j].lower()] = new_label
-        # Now add the preparable label on the right
-        prepare_label = Label(entry_frame, text="Preparable", fg='white', bg=label_color, borderwidth=3,
-                          font=("Gariola", 20), wraplength=200)
-        prepare_label.place(relx=.9, rely=.1, relheight=.8, relwidth=.16, anchor='n')
-        # Check mark = u"\u2713"
-        new_recipe_set["preparable"] = prepare_label
-        
-        # Only click to recipe pages on non-1st row entries
-        if i:
-            bind_frame_and_children(entry_frame, create_recipe_page)
-        
-        recipe_blocks.append(new_recipe_set)
+
+    if not pass_through:
+        recipe_blocks = []
+        for i in range(0, 5):
+            # Keep references to all objects
+            new_recipe_set = {}
+            # Change the top label colors for visibility
+            label_color = PURPLE_BUTTON_COLOR if i else "#B3388C"
+            # Each "recipe" will be a box in a row, not scrollable, but able to go left to right
+            entry_frame = Frame(recipes_frame, bg=DARK_BLUE_FRAME_BG)
+            entry_frame.place(relx=.5, rely=.04 + .19 * i, relheight=.15, relwidth=.95, anchor="n")
+
+            new_recipe_set["frame"] = entry_frame
+
+            # Now need to add the internal blocks
+            # Used for indexing for the name
+            label_names = ["Name", "Type", "Time"]
+            # Adding the first three labels on the left side
+            for j in range(0, 3):
+                new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
+                              font=("Gariola", 20), wraplength=200)
+                new_label.place(relx=.1 + .18 * j, rely=.1, relheight=.8, relwidth=.16, anchor='n')
+                new_recipe_set[label_names[j].lower()] = new_label
+            # Now add the preparable label on the right
+            prepare_label = Label(entry_frame, text="Preparable", fg='white', bg=label_color, borderwidth=3,
+                              font=("Gariola", 20), wraplength=200)
+            prepare_label.place(relx=.9, rely=.1, relheight=.8, relwidth=.16, anchor='n')
+            # Check mark = u"\u2713"
+            new_recipe_set["preparable"] = prepare_label
+
+            # Only click to recipe pages on non-1st row entries
+            if i:
+                bind_frame_and_children(entry_frame, create_recipe_page)
+
+            recipe_blocks.append(new_recipe_set)
+
+    # Was pass through so just get the elements out
+    else:
+        recipe_blocks = pass_through["recipe_blocks"]
     
     # Now setting the different entries
     for i in range(4):
-        recipe_blocks[i+1]['name'].config(text=recipes[i]['name'])
+        recipe_blocks[i+1]['name'].config(text=recipes[i]['name']  + str(page))
         recipe_blocks[i+1]['type'].config(text=recipes[i]['type'])
         recipe_blocks[i+1]['time'].config(text=str(recipes[i]['time']) + " hr(s)")
         recipe_blocks[i+1]['preparable'].config(text=u"\u2713" if recipes[i]['preparable'] else "X")
     
+    # Add the arrows
+    l_arrow, r_arrow = create_left_right_arrows()
+    # Pass through the UI elements so we dont need to redraw for no reason
+    pass_through = {"recipe_blocks": recipe_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow}
+    l_arrow.config(command=lambda: create_recipe_list(page=page-1, going_back=True, pass_through=pass_through))
+    r_arrow.config(command=lambda: create_recipe_list(page=page+1, going_back=True, pass_through=pass_through))
+
     # Log the border_frame for deletion later
     nodes.append(border_frame)
 
@@ -260,51 +288,83 @@ def create_recipe_page(event, going_back=False):
     ingredients_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20)).grid(row=3, column=0,sticky='sew', padx=10, pady=10)
     steps_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20)).grid(row=3, column=1,sticky='sew', padx=10, pady=10)
     
+    # Add a button to the top right for adding ingredients to shopping list
+    shop_recipe_btn=Button(text="Shop Missing Ingredients", fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
+                            relief="solid", command=lambda: print("To be added later..."), wraplength=300)
+    shop_recipe_btn.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
+    nodes.append(shop_recipe_btn)
+    
     # Log the border_frame for deletion later
     nodes.append(border_frame)
 
 
-def create_food_inventory(going_back=False):
-    reset_screen()
-    title_lbl.config(text = "Food Inventory")
+def create_food_inventory(page=0, going_back=False, pass_through=None):
+    # Only reset screen if need to draw for the first time
+    if not pass_through:
+        reset_screen()
+        border_frame, inventory_frame = create_inner_box()
+    # Check lower bound on page
+    if page < 0:
+        page = 0
+    title_lbl.config(text = "Food Inventory Page {}".format(page))
     if not going_back:
         BACK_STATE.append("food_inventory")
+
+    # Only draw the elements if this is first time through
+    if not pass_through:
+        food_blocks = []
+        for i in range(0, 5):
+            # Keep references to all objects
+            new_food_set = {}
+            # Change the top label colors for visibility
+            label_color = PURPLE_BUTTON_COLOR if i else "#B3388C"
+            # Each "recipe" will be a box in a row, not scrollable, but able to go left to right
+            entry_frame = Frame(inventory_frame, bg=DARK_BLUE_FRAME_BG)
+            entry_frame.place(relx=.5, rely=.04 + .19 * i, relheight=.15, relwidth=.95, anchor="n")
+
+            new_food_set["frame"] = entry_frame
+
+            # Now need to add the internal blocks
+            # Used for indexing for the name
+            label_names = ["Name", "Quantity", "Location", "Expiration Date", "Purchase Date"]
+            # Adding the first three labels on the left side
+            for j in range(0, 5):
+                new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
+                              font=("Gariola", 12), wraplength=100)
+                new_label.place(relx=.08 + .14 * j, rely=.1, relheight=.8, relwidth=.12, anchor='n')
+                new_food_set[label_names[j].lower()] = new_label
+            # Now add the preparable label on the right
+            substitute_label = Label(entry_frame, text="Substitutes", fg='white', bg=label_color, borderwidth=3,
+                              font=("Gariola", 12), wraplength=200)
+            substitute_label.place(relx=.9, rely=.1, relheight=.8, relwidth=.16, anchor='n')
+            # Check mark = u"\u2713"
+            new_food_set["substitutes"] = substitute_label
+
+            # Only click to recipe pages on non-1st row entries
+            if i:
+                bind_frame_and_children(entry_frame, create_food_page)
+
+            food_blocks.append(new_food_set)
+    # Just grab the passed UI elements if they exist
+    else:
+        food_blocks = pass_through["food_blocks"]
     
-    border_frame, inventory_frame = create_inner_box()
+    # Now setting the different entries
+    for i in range(4):
+        food_blocks[i+1]['name'].config(text="Name"  + str(page))
+        food_blocks[i+1]['quantity'].config(text="Quantity")
+        food_blocks[i+1]['location'].config(text="Location")
+        food_blocks[i+1]['expiration date'].config(text='expiration date')
+        food_blocks[i+1]['purchase date'].config(text='purchase date')
     
-    food_blocks = []
-    for i in range(0, 5):
-        # Keep references to all objects
-        new_food_set = {}
-        # Change the top label colors for visibility
-        label_color = PURPLE_BUTTON_COLOR if i else "#B3388C"
-        # Each "recipe" will be a box in a row, not scrollable, but able to go left to right
-        entry_frame = Frame(inventory_frame, bg=DARK_BLUE_FRAME_BG)
-        entry_frame.place(relx=.5, rely=.04 + .19 * i, relheight=.15, relwidth=.95, anchor="n")
-        
-        new_food_set["frame"] = entry_frame
-        
-        # Now need to add the internal blocks
-        # Used for indexing for the name
-        label_names = ["Name", "Quantity", "Location", "Expiration Date", "Purchase Date"]
-#         # Adding the first three labels on the left side
-        for j in range(0, 5):
-            new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
-                          font=("Gariola", 12), wraplength=100)
-            new_label.place(relx=.08 + .14 * j, rely=.1, relheight=.8, relwidth=.12, anchor='n')
-            new_food_set[label_names[j].lower()] = new_label
-#         # Now add the preparable label on the right
-        substitute_label = Label(entry_frame, text="Substitutes", fg='white', bg=label_color, borderwidth=3,
-                          font=("Gariola", 12), wraplength=200)
-        substitute_label.place(relx=.9, rely=.1, relheight=.8, relwidth=.16, anchor='n')
-#         # Check mark = u"\u2713"
-        new_food_set["substitutes"] = substitute_label
-        
-        # Only click to recipe pages on non-1st row entries
-        if i:
-            bind_frame_and_children(entry_frame, create_food_page)
-        
-        food_blocks.append(new_food_set)
+    l_arrow, r_arrow = create_left_right_arrows()
+    
+    # Pass through the UI elements so we dont need to redraw for no reason
+    pass_through = {"food_blocks": food_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow}
+    
+    l_arrow.config(command=lambda: create_food_inventory(page=page-1, going_back=True, pass_through=pass_through))
+    r_arrow.config(command=lambda: create_food_inventory(page=page+1, going_back=True, pass_through=pass_through))
+    
     nodes.append(border_frame)
 
     
@@ -398,7 +458,6 @@ def create_weekplan_page(going_back=False):
 
 
 def switch_meal_completed(label):
-    print(label)
     if "[ ]" in label.cget("text"):
         label.config(text="Completed [X]")
     else:
@@ -434,6 +493,13 @@ def create_dayplan_page(day, going_back=False):
     
     nodes.append(border_frame)
 
+
+def create_user_pref_page():
+    reset_screen()
+    title_lbl.config(text = "User Preferences")
+    if not going_back:
+        BACK_STATE.append("user_prefs")
+    
     
 def create_main_screen():
     reset_screen()
@@ -448,26 +514,24 @@ def create_main_screen():
     shopping_list_btn=Button(root, text="Shopping List", fg='black', bg='light grey', bd=MAIN_BORDER_SIZE, font = (MAIN_BUTTON_FONT),
                             relief="ridge", command=lambda: create_shopping_list())
     shopping_list_btn.place(relx=.3, rely=.3, relheight=MAIN_BUTTON_HEIGHT, relwidth=MAIN_BUTTON_WIDTH, anchor = 'n')
-    # shopping_list_btn.grid(column=0, row=1)
-    # shopping_list_btn.place(x=screen_width/3, y=screen_height/3, anchor="center")
 
     week_plan_btn=Button(root, text="Week Meal Plan", fg='black', bg='light grey', bd=MAIN_BORDER_SIZE, font = (MAIN_BUTTON_FONT),
                          relief="ridge", command=create_weekplan_page)
     week_plan_btn.place(relx=.7, rely=.3, relheight=MAIN_BUTTON_HEIGHT, relwidth=MAIN_BUTTON_WIDTH, anchor = 'n')
-    # week_plan_btn.grid(column=1, row=1)
-    # week_plan_btn.place(x=screen_width * 2/3, y=screen_height * 1/3, anchor="center")
 
     recipe_list_btn=Button(root, text="Recipe List", fg='black', bg='light grey', bd=MAIN_BORDER_SIZE, font = (MAIN_BUTTON_FONT),
                            relief="ridge", command=create_recipe_list)
     recipe_list_btn.place(relx=.3, rely=.6, relheight=MAIN_BUTTON_HEIGHT, relwidth=MAIN_BUTTON_WIDTH, anchor = 'n')
-    # recipe_list_btn.grid(column=0, row=2)
-    # recipe_list_btn.place(x=screen_width * 1/3, y=screen_height * 2/3, anchor="center")
 
     food_inv_btn=Button(root, text="Food Inventory", fg='black', bg='light grey', bd=MAIN_BORDER_SIZE, font = (MAIN_BUTTON_FONT),
                         relief="ridge", command=create_food_inventory)
     food_inv_btn.place(relx=.7, rely=.6, relheight=MAIN_BUTTON_HEIGHT, relwidth=MAIN_BUTTON_WIDTH, anchor = 'n')
-    # food_inv_btn.grid(column=1, row=2)
-    # food_inv_btn.place(x=screen_width * 2/3, y=screen_height * 2/3, anchor="center")
+    
+    # Add the user pref button to top right
+    user_pref_btn=Button(text="User Preferences", fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
+                            relief="solid", command=lambda: create_user_pref_page(), wraplength=300)
+    user_pref_btn.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
+    nodes.append(user_pref_btn)
     
     for element in [food_inv_btn, recipe_list_btn, week_plan_btn, shopping_list_btn]:
         nodes.append(element)
