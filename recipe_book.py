@@ -132,6 +132,10 @@ class Recipe(object):
         recipeID.load(serialized_recipe['RecipeID'])
         self.updateID(recipeID)
 
+    def fetch_recipe_from_db(self, name, serialized_recipe, db_session):
+        return True
+
+
     def serialize(self):
         inner_dict = {}
         inner_dict.update(self.instructions.serialize())

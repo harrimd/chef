@@ -1,0 +1,58 @@
+{
+    "name": "Spaghetti and Meatballs",
+    "properties": {
+        "instructions": [
+            {
+                "step_num": 0,
+                "time": "10 minutes",
+                "instruction_text": "Boil salted water in a pot on the stove."
+            },
+            {
+                "step_num": 1,
+                "time": "20 minutes",
+                "instruction_text": "Heat sauce and meatballs in a saucepan."
+            },
+            {
+                "step_num": 2,
+                "time": "8 minutes",
+                "instruction_text": "Put pasta in boiling water, after 8 minutes of cooking, add the strained pasta to the heated sauce and meatballs."
+            }
+        ],
+        "required_inventory": {
+            "Appliances": [
+                {
+                    "id": "stove",
+                    "quantity": 1
+                }
+            ],
+            "Ingredients": [
+                {
+                    "id": "spaghetti",
+                    "quantity": 10,
+                    "unit": "ounces"
+                },
+                {
+                    "id": "tomato_sauce",
+                    "quantity": 1,
+                    "unit": "cup"
+                },
+                {
+                    "id": "meatball",
+                    "quantity": 10,
+                    "unit": ""
+                }
+            ],
+            "Tools": [
+                {
+                    "id": "pot",
+                    "quantity": 2
+                },
+                {
+                    "id": "saucepan",
+                    "quantity": 1
+                }
+            ]
+        },
+        "categories": ["pasta", "entree", "italian"]
+    }
+}
