@@ -13,6 +13,8 @@ DARK_BLUE_FRAME_BG = "#174169"
 BACKGROUND_COLOR = '#2D9CB5'
 GREY_BG_COLOR = "#9A9999"
 
+FILTER_RECIPE_BY_PREPARABLE = False
+
 def go_back():
     if len(BACK_STATE):
         BACK_STATE.pop()
@@ -160,6 +162,12 @@ def create_shopping_list(going_back=False):
     nodes.append(entry)
     nodes.append(border_color)
 
+    
+def change_recipe_filtering():
+    global FILTER_RECIPE_BY_PREPARABLE
+    FILTER_RECIPE_BY_PREPARABLE = not FILTER_RECIPE_BY_PREPARABLE
+    create_recipe_list(going_back=True)
+    
 
 def create_recipe_list(page=0, going_back=False, pass_through=None):
     # First time into this page, so need to draw everything
@@ -172,6 +180,8 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     title_lbl.config(text = "Recipe List Page {}".format(page))
     if not going_back:
         BACK_STATE.append("recipe_list")
+        
+    global FILTER_RECIPE_BY_PREPARABLE
     
     # just a default list of recipes
     recipes = [
@@ -212,12 +222,12 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
             # Adding the first three labels on the left side
             for j in range(0, 3):
                 new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
-                              font=("Gariola", 20), wraplength=200)
+                              font=("Gariola", 12), wraplength=200)
                 new_label.place(relx=.1 + .18 * j, rely=.1, relheight=.8, relwidth=.16, anchor='n')
                 new_recipe_set[label_names[j].lower()] = new_label
             # Now add the preparable label on the right
             prepare_label = Label(entry_frame, text="Preparable", fg='white', bg=label_color, borderwidth=3,
-                              font=("Gariola", 20), wraplength=200)
+                              font=("Gariola", 12), wraplength=200)
             prepare_label.place(relx=.9, rely=.1, relheight=.8, relwidth=.16, anchor='n')
             # Check mark = u"\u2713"
             new_recipe_set["preparable"] = prepare_label
@@ -233,11 +243,22 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
         recipe_blocks = pass_through["recipe_blocks"]
     
     # Now setting the different entries
+    recipes_index = 0
+    blank_rest = False
     for i in range(4):
-        recipe_blocks[i+1]['name'].config(text=recipes[i]['name']  + str(page))
-        recipe_blocks[i+1]['type'].config(text=recipes[i]['type'])
-        recipe_blocks[i+1]['time'].config(text=str(recipes[i]['time']) + " hr(s)")
-        recipe_blocks[i+1]['preparable'].config(text=u"\u2713" if recipes[i]['preparable'] else "X")
+        if FILTER_RECIPE_BY_PREPARABLE:
+            while recipes_index in range(len(recipes)):
+                if not recipes[recipes_index]["preparable"]:
+                    recipes_index += 1
+                else:
+                    break
+        if recipes_index not in range(len(recipes)):
+            blank_rest = True
+        recipe_blocks[i+1]['name'].config(text=recipes[recipes_index]['name']  + str(page) if not blank_rest else "")
+        recipe_blocks[i+1]['type'].config(text=recipes[recipes_index]['type'] if not blank_rest else "")
+        recipe_blocks[i+1]['time'].config(text=str(recipes[recipes_index]['time']) + " hr(s)" if not blank_rest else "")
+        recipe_blocks[i+1]['preparable'].config(text=(u"\u2713" if recipes[recipes_index]['preparable'] else "X") if not blank_rest else "")
+        recipes_index += 1
     
     # Add the arrows
     l_arrow, r_arrow = create_left_right_arrows()
@@ -246,6 +267,13 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     l_arrow.config(command=lambda: create_recipe_list(page=page-1, going_back=True, pass_through=pass_through))
     r_arrow.config(command=lambda: create_recipe_list(page=page+1, going_back=True, pass_through=pass_through))
 
+    # Add a button to the top right for filtering by preparable
+    
+    shop_recipe_btn=Button(text="Filter Preparable [{}]".format(u"\u2713" if FILTER_RECIPE_BY_PREPARABLE else "X"), fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
+                            relief="solid", command=lambda: change_recipe_filtering(), wraplength=300)
+    shop_recipe_btn.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
+    nodes.append(shop_recipe_btn)
+    
     # Log the border_frame for deletion later
     nodes.append(border_frame)
 
@@ -493,12 +521,60 @@ def create_dayplan_page(day, going_back=False):
     
     nodes.append(border_frame)
 
+    
+def add_preference(entry, pref_entry, text_area):
+    new_food = entry.get()
+    pref_num = pref_entry.get()
+    if not new_food or not pref_num:
+        tk.messagebox.showwarning(title="Missing Info", message="Missing either the food name, or preference level!")
+    else:
+         text_area.insert("end", "\u0333".join(new_food) + "\u0333: {}\n".format(pref_num))
 
-def create_user_pref_page():
+def create_user_pref_page(going_back=False):
     reset_screen()
     title_lbl.config(text = "User Preferences")
     if not going_back:
         BACK_STATE.append("user_prefs")
+        
+    temp_list = {"orange": 5, "grapes": 10, "chicken": 2, "beef": 0, "eggs": 8}
+        
+    border_color = Frame(background="black")
+    text_area = tk.Text(border_color, border=0, bg="light grey", font=("Georgia", 20))
+    
+    # Instructions at the top
+    text_area.insert("end", "\u0333".join("<Ingredient>") + "\u0333: <Preference 0-10>\n")
+    text_area.insert("end", "================================\n\n")
+    # Insert each line separately for individual clicking
+    for item in temp_list:
+        text_area.insert("end", "\u0333".join(item) + "\u0333: {}".format(temp_list[item]))
+        text_area.insert("end", "\n")
+    
+    # Creating the black border
+    border_size = 5
+    text_area.pack(expand=True, fill='both', padx=border_size, pady=border_size)
+    border_color.place(relx=.5, rely=.3, anchor='n', relheight=.6, relwidth=.8)
+    
+    # Add a scroll bar
+    scroll_bar = tk.Scrollbar(text_area, command=text_area.yview)
+    scroll_bar.pack(side=tk.RIGHT, fill='y')
+    text_area.config(yscrollcommand=scroll_bar.set)
+    
+    # Add the entry box for adding items
+    entry = ttk.Entry(font=("Georgia", 15))
+    entry.place(relx=.45, rely=.3, relwidth=.35, relheight=.04, anchor="se")
+    
+    pref_entry = ttk.Combobox(root, state="readonly", 
+                  values=(0,1,2,3,4,5,6,7,8,9,10))
+    pref_entry.place(relx=.45, rely=.3, relwidth=.35, relheight=.04, anchor="sw")
+    
+    add_btn = Button(command=lambda: add_preference(entry, pref_entry, text_area), text="Add", font=("Georgia", 15), bg=DARK_BLUE_FRAME_BG, bd=2, fg="white", activebackground='#CED500')
+    add_btn.place(relx=.8, rely=.3, relwidth=.1, relheight=.04, anchor="sw")
+    
+    # Need to log the nodes for deletion later
+    nodes.append(pref_entry)
+    nodes.append(add_btn)
+    nodes.append(entry)
+    nodes.append(border_color)
     
     
 def create_main_screen():
