@@ -308,6 +308,25 @@ class DAO:
         with self.driver.session() as session:
             session.write_transaction(self._init_db)
             print(f'DB inited')
+    
+    def set_score(self, person_name, ingredient, score):
+          with self.driver.session() as session:
+            session.write_transaction(\
+              self._set_score, person_name, ingredient, score)
+            print(f'Ingredient {ingredient} preference score set to {score}')
+            
+    @staticmethod
+    def _set_score(tx, person, ingredient, score):
+          tx.run('MERGE (:Ingredient{name:$ingredient})',\
+            ingredient=ingredient)
+          tx.run("""
+              MATCH 
+                (p:Person{name:$person}), 
+                (i:Ingredient{name:$ingredient})
+              MERGE (p)-[:LIKES{
+                score:$score
+              }]->(i)
+              """, person=person, ingredient=ingredient, score=score)
 
     @staticmethod
     def _init_db(tx):
@@ -745,6 +764,9 @@ if __name__ == "__main__":
     # recipe list page
     # dao.get_all_recipes()
     dao.get_scored_recipes("Alan")
+
+    # set preference score
+    dao.set_score("Alan", "Beef", 1)
 
     # recipe info page
     dao.get_recipe("Sesame Beef")
