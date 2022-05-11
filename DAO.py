@@ -2,6 +2,15 @@ from neo4j import GraphDatabase
 import logging
 from neo4j.exceptions import ServiceUnavailable
 import os
+from os.path import join, dirname
+from dotenv import load_dotenv
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
+
+DB_URI = os.environ.get("DB_URI")
+DB_USER = os.environ.get("DB_USER")
+DB_PASS = os.environ.get("DB_PASS")
 
 # Data Access Object
 class DAO:
@@ -352,6 +361,127 @@ class DAO:
         tx.run('CREATE (:Ingredient{name:"White Sesame"})')
         tx.run('CREATE (:Ingredient{name:"Black Sesame"})')
         tx.run('CREATE (:Ingredient{name:"Black Sesame Powder"})')
+        tx.run('CREATE (:Ingredient{name:"Breadcrumbs"})')
+        tx.run('CREATE (:Ingredient{name:"Panko"})')
+        tx.run("""
+            CREATE 
+              (:Ingredient{
+                name:"Produce",
+                similarity:0
+            })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Fruit",
+                similarity:0.2
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Vegetable",
+                similarity:0.2
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Root vegetable",
+                similarity:0.7
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Cruciferous vegetable",
+                similarity:0.6
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Leafy green",
+                similarity:0.8
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Yam",
+                similarity:1
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Broccoli",
+                similarity:1
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Kale",
+                similarity:1
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Spinach",
+                similarity:1
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Dairy",
+                similarity:0
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Dairy drink",
+                similarity:0.7
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Milk",
+                similarity:0.9
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Dairy-free milk",
+                similarity:0.9
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Oat milk",
+                similarity:1
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Soy milk",
+                similarity:1
+              })
+        """)
+        tx.run("""
+            CREATE
+              (:Ingredient{
+                name:"Rice milk",
+                similarity:1
+              })
+        """)
         # create relationships
         tx.run("""
           MATCH 
@@ -387,6 +517,12 @@ class DAO:
           MATCH 
             (r:Recipe{name:"Fried Chicken"}), 
             (i:Ingredient{name:"Chicken"}) 
+          CREATE (r)-[:NEEDS]->(i)
+        """)
+        tx.run("""
+          MATCH
+            (r:Recipe{name:"Fried Chicken"}),
+            (i:Ingredient{name:"Panko"})
           CREATE (r)-[:NEEDS]->(i)
         """)
         # tx.run("""
@@ -444,6 +580,145 @@ class DAO:
           CREATE (i1)-[:SUBSTITUTES]->(i2)
         """)
         tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Breadcrumbs"}),
+            (i2:Ingredient{name:"Panko"})
+          CREATE (i1)-[:SUBSTITUTES]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Panko"}),
+            (i2:Ingredient{name:"Breadcrumbs"})
+          CREATE (i1)-[:SUBSTITUTES]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Fruit"}),
+            (i2:Ingredient{name:"Produce"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Vegetable"}),
+            (i2:Ingredient{name:"Produce"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Root vegetable"}),
+            (i2:Ingredient{name:"Vegetable"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Cruciferous vegetable"}),
+            (i2:Ingredient{name:"Vegetable"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Leafy green"}),
+            (i2:Ingredient{name:"Vegetable"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Yam"}),
+            (i2:Ingredient{name:"Root vegetable"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Broccoli"}),
+            (i2:Ingredient{name:"Cruciferous vegetable"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Kale"}),
+            (i2:Ingredient{name:"Cruciferous vegetable"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Kale"}),
+            (i2:Ingredient{name:"Leafy green"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Spinach"}),
+            (i2:Ingredient{name:"Leafy green"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Dairy drink"}),
+            (i2:Ingredient{name:"Dairy"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Milk"}),
+            (i2:Ingredient{name:"Dairy drink"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Oat milk"}),
+            (i2:Ingredient{name:"Dairy-free milk"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Soy milk"}),
+            (i2:Ingredient{name:"Dairy-free milk"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Rice milk"}),
+            (i2:Ingredient{name:"Dairy-free milk"})
+          CREATE (i1)-[:IS_A]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Dairy-free milk"}),
+            (i2:Ingredient{name:"Milk"})
+          CREATE (i1)-[:SUBSTITUTES{general:0.9,baking:0.1}]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Oat milk"}),
+            (i2:Ingredient{name:"Milk"})
+          CREATE (i1)-[:SUBSTITUTES{baking:0.4}]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Soy milk"}),
+            (i2:Ingredient{name:"Milk"})
+          CREATE (i1)-[:SUBSTITUTES{baking:0.7}]->(i2)
+        """)
+        tx.run("""
+          MATCH 
+            (p:Person{name:"Alan"}), 
+            (i:Ingredient{name:"Dairy"}) 
+          CREATE (p)-[:LIKES{score:-1}]->(i)
+        """)
+        
+        tx.run("""
+          MATCH 
+            (p:Person{name:"Alan"}), 
+            (i:Ingredient{name:"Soy milk"}) 
+          CREATE (p)-[:LIKES{score:0.7}]->(i)
+        """)
+        tx.run("""
+          MATCH 
+            (p:Person{name:"Alan"}), 
+            (i:Ingredient{name:"Rice milk"}) 
+          CREATE (p)-[:LIKES{score:0.4}]->(i)
+        """)
+        tx.run("""
           MATCH 
             (p:Person{name:"Alan"}), 
             (r:Recipe{name:"Sesame Chicken"}) 
@@ -452,9 +727,9 @@ class DAO:
 
 if __name__ == "__main__":
     # FIXME pass those as ENV before checkin
-    uri = os.getenv("DB_URI")
-    user = os.getenv("DB_USER")
-    password = os.getenv("DB_PASS")
+    uri = DB_URI
+    user = DB_USER
+    password = DB_PASS
     dao = DAO(uri, user, password)
 
     # FIXME may ONLY need to run this once
