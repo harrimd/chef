@@ -352,6 +352,8 @@ class DAO:
         tx.run('CREATE (:Ingredient{name:"White Sesame"})')
         tx.run('CREATE (:Ingredient{name:"Black Sesame"})')
         tx.run('CREATE (:Ingredient{name:"Black Sesame Powder"})')
+        tx.run('CREATE (:Ingredient{name:"Breadcrumbs"})')
+        tx.run('CREATE (:Ingredient{name:"Panko"})')
         # create relationships
         tx.run("""
           MATCH 
@@ -387,6 +389,12 @@ class DAO:
           MATCH 
             (r:Recipe{name:"Fried Chicken"}), 
             (i:Ingredient{name:"Chicken"}) 
+          CREATE (r)-[:NEEDS]->(i)
+        """)
+        tx.run("""
+          MATCH
+            (r:Recipe{name:"Fried Chicken"}),
+            (i:Ingredient{name:"Panko"})
           CREATE (r)-[:NEEDS]->(i)
         """)
         # tx.run("""
@@ -441,6 +449,18 @@ class DAO:
           MATCH 
             (i1:Ingredient{name:"Black Sesame Powder"}), 
             (i2:Ingredient{name:"Black Sesame"}) 
+          CREATE (i1)-[:SUBSTITUTES]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Breadcrumbs"}),
+            (i2:Ingredient{name:"Panko"})
+          CREATE (i1)-[:SUBSTITUTES]->(i2)
+        """)
+        tx.run("""
+          MATCH
+            (i1:Ingredient{name:"Panko"}),
+            (i2:Ingredient{name:"Breadcrumbs"})
           CREATE (i1)-[:SUBSTITUTES]->(i2)
         """)
         tx.run("""
