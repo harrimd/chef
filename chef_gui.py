@@ -15,6 +15,21 @@ GREY_BG_COLOR = "#9A9999"
 
 FILTER_RECIPE_BY_PREPARABLE = False
 
+# Keep track of which things on the shopping list are crossed off
+CROSSED_SHOP_ITEMS = []
+
+# Initializing the DAO
+import DAO
+from settings import DB_URI, DB_USER, DB_PASS
+DAO_OBJ = DAO.DAO(DB_URI, DB_USER, DB_PASS)
+USER = "Alan"
+DAO_OBJ.init_db()
+
+print(DAO_OBJ.get_all_recipes())
+print(DAO_OBJ.find_ingredients_by_recipe("Sesame Chicken"))
+
+# exit(0)
+
 def go_back():
     if len(BACK_STATE):
         BACK_STATE.pop()
@@ -84,23 +99,28 @@ def reset_screen():
         
 
 def shopping_list_item_click(event):
+    global CROSSED_SHOP_ITEMS
     # get the index of the mouse click
     index = event.widget.index("@%s,%s" % (event.x, event.y))
 
     # get the indices of all "adj" tags
-    tag_indices = list(event.widget.tag_ranges('tag'))
+    tag_indices = list(event.widget.tag_ranges('tag')) + list(event.widget.tag_ranges('tag-crossed'))
 
     # iterate them pairwise (start and end index)
     for start, end in zip(tag_indices[0::2], tag_indices[1::2]):
         # check if the tag matches the mouse click index
         if event.widget.compare(start, '<=', index) and event.widget.compare(index, '<', end):
             # Switch between crossed out or not
+            print("CHANGING")
             if event.widget.get(start) != u'\u0336':
                 new_line = ''.join([u'\u0336{}'.format(c) for c in event.widget.get(start, end)]) + u'\u0336'
+                event.widget.replace(start, end, new_line, "tag-crossed")
+                CROSSED_SHOP_ITEMS.append(new_line.replace(u'\u0336', ""))
             else:
                 new_line = event.widget.get(start, end).replace(u'\u0336', "")
-            event.widget.replace(start, end, new_line, "tag")
-
+                event.widget.replace(start, end, new_line, "tag")
+                CROSSED_SHOP_ITEMS.remove(new_line)
+            print(new_line)
             
 def add_item(event):
     global text_area
@@ -113,18 +133,21 @@ def add_item(event):
             
             event.widget.delete(0, "end")
             # TODO: Update the backend list
+            DAO_OBJ.add_shopping_item(USER, new_item)
     except Exception as e:
         print("error somehow adding item??")
         print(e)
             
 
 def create_shopping_list(going_back=False):
+    global CROSSED_SHOP_ITEMS
     reset_screen()
     title_lbl.config(text = "Shopping List")
     if not going_back:
         BACK_STATE.append("shopping_list")
     
     temp_list = ["orange", "grapes", "chicken", "beef", "eggs"]
+    shopping_list = DAO_OBJ.get_shopping_list(USER)
     global text_area
     global nodes
     
@@ -136,11 +159,20 @@ def create_shopping_list(going_back=False):
 
     # Setting the clicking stuff
     text_area.tag_config("tag")
+    text_area.tag_config("tag-crossed", foreground="red")
     text_area.tag_bind("tag", "<Button-1>", shopping_list_item_click)
+    text_area.tag_bind("tag-crossed", "<Button-1>", shopping_list_item_click)
     
     # Insert each line separately for individual clicking
-    for item in temp_list:
-        text_area.insert("end", " \u2022 {}".format(item), "tag")
+    print(CROSSED_SHOP_ITEMS)
+    for item in shopping_list:
+        item_tag = "tag"
+        item_string = " \u2022 {}".format(item["name"])
+        print(item)
+        if item_string in CROSSED_SHOP_ITEMS:
+            item_tag = "tag-crossed"
+            item_string = ''.join([u'\u0336{}'.format(c) for c in item_string]) + u'\u0336'
+        text_area.insert("end", item_string, item_tag)
         text_area.insert("end", "\n")
     
     # Creating the black border
@@ -163,10 +195,10 @@ def create_shopping_list(going_back=False):
     nodes.append(border_color)
 
     
-def change_recipe_filtering():
+def change_recipe_filtering(pass_through):
     global FILTER_RECIPE_BY_PREPARABLE
     FILTER_RECIPE_BY_PREPARABLE = not FILTER_RECIPE_BY_PREPARABLE
-    create_recipe_list(going_back=True)
+    create_recipe_list(going_back=True, pass_through=pass_through)
     
 
 def create_recipe_list(page=0, going_back=False, pass_through=None):
@@ -177,31 +209,40 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     # Check lower bound on page
     if page < 0:
         page = 0
-    title_lbl.config(text = "Recipe List Page {}".format(page))
     if not going_back:
         BACK_STATE.append("recipe_list")
         
     global FILTER_RECIPE_BY_PREPARABLE
     
+    # Get the full recipe list
+    # Only need to query db if not passthrough, is slow
+    if not pass_through:
+        recipes = DAO_OBJ.get_all_recipes()
+    else:
+        recipes = pass_through["recipes"]
     # just a default list of recipes
-    recipes = [
-        {"name": "Quesadilla",
-         "type": "Mexican",
-         "time": 1.0,
-          "preparable": True},
-        {"name": "Cashew Chicken",
-         "type": "Asian",
-         "time": 2.0,
-          "preparable": False},
-        {"name": "Cheeseburger",
-         "type": "American",
-         "time": .5,
-          "preparable": True},
-        {"name": "Chili",
-         "type": "-",
-         "time": 1.5,
-          "preparable": True}
-    ]
+    # recipes = [
+    #     {"name": "Quesadilla",
+    #      "type": "Mexican",
+    #      "time": 1.0,
+    #       "preparable": True},
+    #     {"name": "Cashew Chicken",
+    #      "type": "Asian",
+    #      "time": 2.0,
+    #       "preparable": False},
+    #     {"name": "Cheeseburger",
+    #      "type": "American",
+    #      "time": .5,
+    #       "preparable": True},
+    #     {"name": "Chili",
+    #      "type": "-",
+    #      "time": 1.5,
+    #       "preparable": True},
+    #     {"name": "French Toast",
+    #      "type": "Breakfast",
+    #      "time": .4,
+    #       "preparable": True}
+    # ]
 
     if not pass_through:
         recipe_blocks = []
@@ -232,10 +273,6 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
             # Check mark = u"\u2713"
             new_recipe_set["preparable"] = prepare_label
 
-            # Only click to recipe pages on non-1st row entries
-            if i:
-                bind_frame_and_children(entry_frame, create_recipe_page)
-
             recipe_blocks.append(new_recipe_set)
 
     # Was pass through so just get the elements out
@@ -245,6 +282,16 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     # Now setting the different entries
     recipes_index = 0
     blank_rest = False
+    # First need to raise the recipes_index for the current page
+    if page != 0:
+        for i in range(page):
+            if recipes_index + 4 < len(recipes):
+                recipes_index += 4
+            else:
+                page = i
+                break
+    # Set title after this so the page is consistent
+    title_lbl.config(text = "Recipe List Page {}".format(page + 1))
     for i in range(4):
         if FILTER_RECIPE_BY_PREPARABLE:
             while recipes_index in range(len(recipes)):
@@ -254,36 +301,44 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
                     break
         if recipes_index not in range(len(recipes)):
             blank_rest = True
-        recipe_blocks[i+1]['name'].config(text=recipes[recipes_index]['name']  + str(page) if not blank_rest else "")
+        recipe_blocks[i+1]['name'].config(text=recipes[recipes_index]['name'] if not blank_rest else "")
         recipe_blocks[i+1]['type'].config(text=recipes[recipes_index]['type'] if not blank_rest else "")
         recipe_blocks[i+1]['time'].config(text=str(recipes[recipes_index]['time']) + " hr(s)" if not blank_rest else "")
         recipe_blocks[i+1]['preparable'].config(text=(u"\u2713" if recipes[recipes_index]['preparable'] else "X") if not blank_rest else "")
+        
+        if not blank_rest:
+            # Set up the bind to click
+            bind_frame_and_children(recipe_blocks[i+1]["frame"], lambda e, name=recipes[recipes_index]['name']: create_recipe_page(name))
         recipes_index += 1
     
     # Add the arrows
     l_arrow, r_arrow = create_left_right_arrows()
-    # Pass through the UI elements so we dont need to redraw for no reason
-    pass_through = {"recipe_blocks": recipe_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow}
     l_arrow.config(command=lambda: create_recipe_list(page=page-1, going_back=True, pass_through=pass_through))
     r_arrow.config(command=lambda: create_recipe_list(page=page+1, going_back=True, pass_through=pass_through))
 
-    # Add a button to the top right for filtering by preparable
+    if not pass_through:
+        # Add a button to the top right for filtering by preparable
+        shop_recipe_btn=Button(text="Filter Preparable [{}]".format(u"\u2713" if FILTER_RECIPE_BY_PREPARABLE else "X"), fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
+                                relief="solid", command=lambda: change_recipe_filtering(pass_through), wraplength=300)
+        shop_recipe_btn.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
     
-    shop_recipe_btn=Button(text="Filter Preparable [{}]".format(u"\u2713" if FILTER_RECIPE_BY_PREPARABLE else "X"), fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
-                            relief="solid", command=lambda: change_recipe_filtering(), wraplength=300)
-    shop_recipe_btn.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
-    nodes.append(shop_recipe_btn)
-    
-    # Log the border_frame for deletion later
-    nodes.append(border_frame)
+        nodes.append(shop_recipe_btn)
+        
+        # Log the border_frame for deletion later
+        nodes.append(border_frame)
+
+    # Pass through the UI elements so we dont need to redraw for no reason
+    pass_through = {"recipe_blocks": recipe_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow, "recipes": recipes}
 
 
-def create_recipe_page(event, going_back=False):
+def create_recipe_page(recipe_name, going_back=False):
     reset_screen()
-    title_lbl.config(text = "Recipe Info Page")
+    title_lbl.config(text = "{} Page".format(recipe_name))
     if not going_back:
         BACK_STATE.append("recipe_page")
     
+    recipe_info = DAO_OBJ.get_recipe(recipe_name)
+
     border_size = 8
     # Outside frame to make a border
     border_frame = Frame(bg="black")
@@ -302,23 +357,29 @@ def create_recipe_page(event, going_back=False):
     
 #     recipe_label=Label(grid_frame, text="Recipe Name", fg='#227C19', bg='#F7FF00',
 #                     font=("gabriola", 40), relief="solid", borderwidth=3).grid(columnspan=2, row=0, column=0,sticky='ew', pady=10, padx=150, ipady=20)
-    type_label=Label(grid_frame, text="Type: <Food Type>", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 40), relief="solid", borderwidth=3).grid(row=0, column=0,sticky='ew', padx=50, pady=10, ipady=30)
-    time_label=Label(grid_frame, text="Time: X hrs", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 40), relief="solid", borderwidth=3).grid(row=0, column=1,sticky='ew', padx=50, pady=10, ipady=30)
+    type_label=Label(grid_frame, text="Type: {}".format(recipe_info["type"]), fg='white', bg=PURPLE_BUTTON_COLOR,
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=0, column=0,sticky='ew', padx=50, pady=10, ipady=40)
+    time_label=Label(grid_frame, text="Time: {} hrs".format(recipe_info["time"]), fg='white', bg=PURPLE_BUTTON_COLOR,
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=0, column=1,sticky='ew', padx=50, pady=10, ipady=40)
     nothing_label=Label(grid_frame, text="", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 40), relief="solid", borderwidth=3).grid(columnspan=2, row=1, column=0, sticky='ew', ipady=40, pady=10)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(columnspan=2, row=1, column=0, sticky='ew', ipady=40, pady=10)
     ingredients_label=Label(grid_frame, text="Ingredients", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 40), relief="solid", borderwidth=3).grid(row=2, column=0,sticky='ew', padx=screen_width/10, ipady=35)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=2, column=0,sticky='ew', padx=screen_width/10, ipady=45)
     steps_label=Label(grid_frame, text="Steps", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 40), relief="solid", borderwidth=3).grid(row=2, column=1,sticky='ew', padx=screen_width/10, ipady=35)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=2, column=1,sticky='ew', padx=screen_width/10, ipady=45)
     
-    ingredients_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20)).grid(row=3, column=0,sticky='sew', padx=10, pady=10)
-    steps_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20)).grid(row=3, column=1,sticky='sew', padx=10, pady=10)
+    ingredients_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20))
+    ingredients_text.insert(END, "\n".join(DAO_OBJ.find_ingredients_by_recipe(recipe_name)))
+    ingredients_text.configure(state="disabled")
+    ingredients_text.grid(row=3, column=0,sticky='sew', padx=10, pady=10)
+    steps_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20))
+    steps_text.insert(END, "\n".join(recipe_info["steps"]))
+    steps_text.configure(state="disabled")
+    steps_text.grid(row=3, column=1,sticky='sew', padx=10, pady=10)
     
     # Add a button to the top right for adding ingredients to shopping list
     shop_recipe_btn=Button(text="Shop Missing Ingredients", fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
-                            relief="solid", command=lambda: print("To be added later..."), wraplength=300)
+                            relief="solid", command=lambda: DAO_OBJ.shopping_by_recipe(USER, recipe_name), wraplength=300)
     shop_recipe_btn.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
     nodes.append(shop_recipe_btn)
     
@@ -334,7 +395,7 @@ def create_food_inventory(page=0, going_back=False, pass_through=None):
     # Check lower bound on page
     if page < 0:
         page = 0
-    title_lbl.config(text = "Food Inventory Page {}".format(page))
+
     if not going_back:
         BACK_STATE.append("food_inventory")
 
@@ -354,9 +415,9 @@ def create_food_inventory(page=0, going_back=False, pass_through=None):
 
             # Now need to add the internal blocks
             # Used for indexing for the name
-            label_names = ["Name", "Quantity", "Location", "Expiration Date", "Purchase Date"]
+            label_names = ["Name", "Quantity", "Expiration Date", "Purchase Date"] #took Location out
             # Adding the first three labels on the left side
-            for j in range(0, 5):
+            for j in range(0, 4):
                 new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
                               font=("Gariola", 12), wraplength=100)
                 new_label.place(relx=.08 + .14 * j, rely=.1, relheight=.8, relwidth=.12, anchor='n')
@@ -368,38 +429,72 @@ def create_food_inventory(page=0, going_back=False, pass_through=None):
             # Check mark = u"\u2713"
             new_food_set["substitutes"] = substitute_label
 
-            # Only click to recipe pages on non-1st row entries
-            if i:
-                bind_frame_and_children(entry_frame, create_food_page)
-
             food_blocks.append(new_food_set)
     # Just grab the passed UI elements if they exist
     else:
         food_blocks = pass_through["food_blocks"]
     
+    # Only get the inventory again if we are not passing through
+    if not pass_through:
+        food_inv = DAO_OBJ.get_inventory(USER)
+    else:
+        food_inv = pass_through["food_inventory"]
+
+    # First get the index we need based on the page
+    food_index = 0
+    blank_rest = False
+    # First need to raise the recipes_index for the current page
+    if page != 0:
+        for i in range(page):
+            if food_index + 4 < len(food_inv):
+                food_index += 4
+            else:
+                page = i
+                break
+    # Set title after page is fixed
+    title_lbl.config(text = "Food Inventory Page {}".format(page + 1))
     # Now setting the different entries
     for i in range(4):
-        food_blocks[i+1]['name'].config(text="Name"  + str(page))
-        food_blocks[i+1]['quantity'].config(text="Quantity")
-        food_blocks[i+1]['location'].config(text="Location")
-        food_blocks[i+1]['expiration date'].config(text='expiration date')
-        food_blocks[i+1]['purchase date'].config(text='purchase date')
+        if food_index not in range(len(food_inv)):
+            blank_rest = True
+
+        if not blank_rest:
+            # Set the click to reach food page
+            bind_frame_and_children(food_blocks[i+1]["frame"], lambda e, food_inv=food_inv, name=food_inv[food_index]["name"]:create_food_page(name, food_inv))
+
+        food_blocks[i+1]['name'].config(text=food_inv[food_index]["name"]  if not blank_rest else "")
+        food_blocks[i+1]['quantity'].config(text=food_inv[food_index]["quantity"]  if not blank_rest else "")
+        # food_blocks[i+1]['location'].config(text="Location"  if not blank_rest else "")
+        food_blocks[i+1]['expiration date'].config(text=food_inv[food_index]["expiration"]  if not blank_rest else "")
+        food_blocks[i+1]['purchase date'].config(text=food_inv[food_index]["purchase"]  if not blank_rest else "")
+        food_index += 1
     
     l_arrow, r_arrow = create_left_right_arrows()
-    
-    # Pass through the UI elements so we dont need to redraw for no reason
-    pass_through = {"food_blocks": food_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow}
     
     l_arrow.config(command=lambda: create_food_inventory(page=page-1, going_back=True, pass_through=pass_through))
     r_arrow.config(command=lambda: create_food_inventory(page=page+1, going_back=True, pass_through=pass_through))
     
-    nodes.append(border_frame)
+    if not pass_through:
+        nodes.append(border_frame)
 
-    
-def create_food_page(event):
+    # Pass through the UI elements so we dont need to redraw for no reason
+    pass_through = {"food_blocks": food_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow, "food_inventory": food_inv}
+
+
+def _get_food_by_name(food_name, food_inv):
+    for food in food_inv:
+        if food["name"] == food_name:
+            return food 
+    return None
+
+
+def create_food_page(food_name, food_inv):
     reset_screen()
-    title_lbl.config(text = "Food Page")
+    title_lbl.config(text = "{} Page".format(food_name))
     BACK_STATE.append("food_page")
+
+    food_obj = _get_food_by_name(food_name, food_inv)
+    subs = DAO_OBJ.get_substitutes(food_name)
     
     border_frame, recipes_frame = create_inner_box()
     
@@ -407,33 +502,33 @@ def create_food_page(event):
     
     recipes_frame.grid_rowconfigure(0, weight=1)
     recipes_frame.grid_rowconfigure(1, weight=1)
-    recipes_frame.grid_rowconfigure(2, weight=2)
+    # recipes_frame.grid_rowconfigure(2, weight=2)
     recipes_frame.grid_columnconfigure(0, weight=1)
     recipes_frame.grid_columnconfigure(1, weight=1)
     
-    quant_label = Label(recipes_frame, text="Quantity: <#>", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2, 
+    quant_label = Label(recipes_frame, text="Quantity: {}".format(food_obj["quantity"]), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2, 
                           font=("Gariola", 20), wraplength=400, relief="solid")
     quant_label.bind('<Configure>', lambda e: quant_label.config(wraplength=quant_label.winfo_width()))
     quant_label.grid(row=0, column=0,sticky='nsew')
     
-    loc_label = Label(recipes_frame, text="Location: <loc>", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
-                          font=("Gariola", 20), wraplength=400, relief="solid")
-    loc_label.bind('<Configure>', lambda e: loc_label.config(wraplength=loc_label.winfo_width()))
-    loc_label.grid(row=0, column=1,sticky='nsew')
+    # loc_label = Label(recipes_frame, text="Location: <loc>", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
+    #                       font=("Gariola", 20), wraplength=400, relief="solid")
+    # loc_label.bind('<Configure>', lambda e: loc_label.config(wraplength=loc_label.winfo_width()))
+    # loc_label.grid(row=0, column=1,sticky='nsew')
     
-    expdate_label = Label(recipes_frame, text="Expiration Date: <##/##/##>", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
+    expdate_label = Label(recipes_frame, text="Expiration Date: {}".format(food_obj["expiration"]), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
                           font=("Gariola", 20), wraplength=400, relief="solid")
     expdate_label.bind('<Configure>', lambda e: expdate_label.config(wraplength=expdate_label.winfo_width()))
     expdate_label.grid(row=1, column=0,sticky='nsew')
-    purchdate_label = Label(recipes_frame, text="Purchase Date: <##/##/##>", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
+    purchdate_label = Label(recipes_frame, text="Purchase Date: {}".format(food_obj["purchase"]), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
                           font=("Gariola", 20), wraplength=400, relief="solid")
     purchdate_label.bind('<Configure>', lambda e: purchdate_label.config(wraplength=purchdate_label.winfo_width()))
     purchdate_label.grid(row=1, column=1,sticky='nsew')
 
-    substitutes_label = Label(recipes_frame, text="Substitutions: XXX,YYY,ZZZ,...", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
+    substitutes_label = Label(recipes_frame, text="Substitutions: {}".format(subs if subs else "None"), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
                           font=("Gariola", 20), wraplength=800, relief="solid")
     substitutes_label.bind('<Configure>', lambda e: substitutes_label.config(wraplength=substitutes_label.winfo_width()))
-    substitutes_label.grid(row=2, column=0,columnspan=2,sticky='nsew')
+    substitutes_label.grid(row=0, column=1,sticky='nsew')
     
     nodes.append(border_frame)
 
@@ -615,7 +710,7 @@ def create_main_screen():
 root = tk.Tk()
 root.title('Tkinter Window Demo')
 root.resizable(height = 1, width = 1)
-root.state("zoomed")
+# root.state("zoomed")
 # get the screen dimension
 screen_width = int(root.winfo_screenwidth()/1.1)
 screen_height = int(root.winfo_screenheight()/1.1)
