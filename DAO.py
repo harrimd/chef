@@ -42,6 +42,26 @@ class DAO:
                 }]->(i)
               """, person_name=person_name, item=item)
 
+    def update_inventory_item(self, person_name, item):
+          with self.driver.session() as session:
+            session.write_transaction(\
+              self._update_inventory_item, person_name, item)
+            print(f'Updated inventory item ({item["name"]},{item["purchase"]}).')
+            
+    @staticmethod
+    def _update_inventory_item(tx, person_name, item):
+          tx.run("""
+                  MATCH
+                    (p:Person{name:$person_name})-
+                      [r:HAS{
+                        purchase:$item["purchase"]
+                      }]->
+                    (i:Ingredient{
+                        name:$item["name"]
+                    })
+                  SET r.quantity = $item["quantity"]
+                 """, person_name=person_name, item=item)
+
     def delete_inventory_item(self, person_name, item):
         with self.driver.session() as session:
             session.write_transaction(\
@@ -822,5 +842,12 @@ if __name__ == "__main__":
     # weekly meal plan page
     dao.get_meal_plan("Alan", "Monday")
     dao.add_meal_to_plan("Alan", "Fried Chicken", "Tuesday")
+    
+    dao.update_inventory_item("Alan", {
+      "name": "Chicken",
+      "quantity":2,
+      "expiration":"2022-05-11",
+      "purchase":"2022-05-03"
+    })
 
     dao.close()
