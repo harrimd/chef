@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 import random
+from datetime import date, timedelta
 
 # Keep track of which page we are on for going backwards
 # main, recipe, recipe_list, shopping_list
@@ -18,15 +19,18 @@ FILTER_RECIPE_BY_PREPARABLE = False
 # Keep track of which things on the shopping list are crossed off
 CROSSED_SHOP_ITEMS = []
 
+# Keep track of the weekly meal plan
+WEEK_MEAL_PLAN = []
+
 # Initializing the DAO
 import DAO
 from settings import DB_URI, DB_USER, DB_PASS
 DAO_OBJ = DAO.DAO(DB_URI, DB_USER, DB_PASS)
 USER = "Alan"
-DAO_OBJ.init_db()
+# DAO_OBJ.init_db()
 
-print(DAO_OBJ.get_all_recipes())
-print(DAO_OBJ.find_ingredients_by_recipe("Sesame Chicken"))
+print(DAO_OBJ.get_scored_ingredients("Alan"))
+# print(DAO_OBJ.find_ingredients_by_recipe("Sesame Chicken"))
 
 # exit(0)
 
@@ -132,12 +136,39 @@ def add_item(event):
             text_area.insert("end", "\n")
             
             event.widget.delete(0, "end")
-            # TODO: Update the backend list
+            # Update the backend list
             DAO_OBJ.add_shopping_item(USER, new_item)
     except Exception as e:
         print("error somehow adding item??")
         print(e)
-            
+
+
+def buy_shopping_list(text_area):
+    print("Buy the list!")
+    raw_text = text_area.get("1.0", "end-1c")
+    # Need to remove the formatting we had
+    for del_chars in [u'\u0336', " \u2022 "]:
+        raw_text = raw_text.replace(del_chars, "")
+
+    # Now go through the lines and remove them from the shopping list and add to inventory
+    for line in raw_text.split("\n"):
+        # Dont want to run on empty lines
+        if line:
+            print("deleting {}".format(line))
+            # Delete from the shopping list
+            DAO_OBJ.delete_shopping_item(USER, line)
+            # Add to the inventory (make expiration just a random number for now)
+            DAO_OBJ.add_inventory_item("Alan", {
+                                       "name": line,
+                                       "quantity":1, 
+                                       "expiration": str(date.today() + timedelta(days=random.randint(10,25))), 
+                                       "purchase": str(date.today())
+                                        })
+    # Now need to clear the text area
+    text_area.delete(1.0, END)
+    # Clear the list of crossed off things
+    global CROSSED_SHOP_ITEMS
+    CROSSED_SHOP_ITEMS = []
 
 def create_shopping_list(going_back=False):
     global CROSSED_SHOP_ITEMS
@@ -146,7 +177,7 @@ def create_shopping_list(going_back=False):
     if not going_back:
         BACK_STATE.append("shopping_list")
     
-    temp_list = ["orange", "grapes", "chicken", "beef", "eggs"]
+    # temp_list = ["orange", "grapes", "chicken", "beef", "eggs"]
     shopping_list = DAO_OBJ.get_shopping_list(USER)
     global text_area
     global nodes
@@ -190,8 +221,15 @@ def create_shopping_list(going_back=False):
     entry.bind('<Return>', add_item)
     entry.place(relx=.5, rely=.3, relwidth=.8, relheight=.04, anchor="s")
     
+    # Add the button to clear/inventory the shopping list
+    buy_all_button=Button(text="Buy/Inventory All Items", fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
+                            relief="solid", command=lambda ta=text_area: buy_shopping_list(ta), wraplength=300)
+    buy_all_button.place(relx=0.99, rely=0.03, relheight=.14, anchor="ne")
+
+
     # Need to log the nodes for deletion later
     nodes.append(entry)
+    nodes.append(buy_all_button)
     nodes.append(border_color)
 
     
@@ -199,7 +237,14 @@ def change_recipe_filtering(pass_through):
     global FILTER_RECIPE_BY_PREPARABLE
     FILTER_RECIPE_BY_PREPARABLE = not FILTER_RECIPE_BY_PREPARABLE
     create_recipe_list(going_back=True, pass_through=pass_through)
-    
+
+
+def check_recipe_prepable(recipe_name, prepable_recipes):
+    for recipe in prepable_recipes:
+        if recipe["name"] == recipe_name:
+            return True
+    return False
+
 
 def create_recipe_list(page=0, going_back=False, pass_through=None):
     # First time into this page, so need to draw everything
@@ -217,9 +262,12 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     # Get the full recipe list
     # Only need to query db if not passthrough, is slow
     if not pass_through:
-        recipes = DAO_OBJ.get_all_recipes()
+        recipes = DAO_OBJ.get_scored_recipes(USER)
     else:
         recipes = pass_through["recipes"]
+
+    # Get all completable recipes
+    prepable_recipes = DAO_OBJ.find_ready_recipes_by_person(USER)
     # just a default list of recipes
     # recipes = [
     #     {"name": "Quesadilla",
@@ -259,9 +307,9 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
 
             # Now need to add the internal blocks
             # Used for indexing for the name
-            label_names = ["Name", "Type", "Time"]
+            label_names = ["Name", "Type", "Time", "Likability"]
             # Adding the first three labels on the left side
-            for j in range(0, 3):
+            for j in range(0, 4):
                 new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
                               font=("Gariola", 12), wraplength=200)
                 new_label.place(relx=.1 + .18 * j, rely=.1, relheight=.8, relwidth=.16, anchor='n')
@@ -295,7 +343,7 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     for i in range(4):
         if FILTER_RECIPE_BY_PREPARABLE:
             while recipes_index in range(len(recipes)):
-                if not recipes[recipes_index]["preparable"]:
+                if not check_recipe_prepable(recipes[recipes_index]['name'], prepable_recipes):
                     recipes_index += 1
                 else:
                     break
@@ -304,8 +352,8 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
         recipe_blocks[i+1]['name'].config(text=recipes[recipes_index]['name'] if not blank_rest else "")
         recipe_blocks[i+1]['type'].config(text=recipes[recipes_index]['type'] if not blank_rest else "")
         recipe_blocks[i+1]['time'].config(text=str(recipes[recipes_index]['time']) + " hr(s)" if not blank_rest else "")
-        recipe_blocks[i+1]['preparable'].config(text=(u"\u2713" if recipes[recipes_index]['preparable'] else "X") if not blank_rest else "")
-        
+        recipe_blocks[i+1]['preparable'].config(text=(u"\u2713" if check_recipe_prepable(recipes[recipes_index]['name'], prepable_recipes) else "X") if not blank_rest else "")
+        recipe_blocks[i+1]["likability"].config(text=recipes[recipes_index]["score"] if not blank_rest else "")
         if not blank_rest:
             # Set up the bind to click
             bind_frame_and_children(recipe_blocks[i+1]["frame"], lambda e, name=recipes[recipes_index]['name']: create_recipe_page(name))
@@ -331,6 +379,20 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
     pass_through = {"recipe_blocks": recipe_blocks, "l_arrow": l_arrow, "r_arrow":r_arrow, "recipes": recipes}
 
 
+def complete_recipe(recipe_name):
+    for ingred in DAO_OBJ.find_ingredients_by_recipe(recipe_name):
+        # First need to find the ingred purchase date to remove
+        purch_date = None
+        for owned_ingred in DAO_OBJ.get_inventory(USER):
+            if owned_ingred["name"] == ingred:
+                purch_date = owned_ingred["purchase"]
+                break
+        if purch_date:
+            DAO_OBJ.delete_inventory_item(USER, {"name": ingred, "purchase": purch_date})
+        else:
+            print("Didn't use ingredient: {}!".format(ingred))
+
+
 def create_recipe_page(recipe_name, going_back=False):
     reset_screen()
     title_lbl.config(text = "{} Page".format(recipe_name))
@@ -348,34 +410,38 @@ def create_recipe_page(recipe_name, going_back=False):
     grid_frame.pack(expand=True, fill='both', padx=border_size, pady=border_size)
     border_frame.place(relx=.5, rely= .21, relheight=.78, relwidth=.98, anchor="n")
     
-    grid_frame.grid_rowconfigure(0, weight=1)
+    grid_frame.grid_rowconfigure(0, weight=2)
     grid_frame.grid_rowconfigure(1, weight=2)
-    grid_frame.grid_rowconfigure(2, weight=1)
-    grid_frame.grid_rowconfigure(3, weight=4)
+    grid_frame.grid_rowconfigure(2, weight=50)
+    grid_frame.grid_rowconfigure(3, weight=1)
     grid_frame.grid_columnconfigure(0, weight=1)
     grid_frame.grid_columnconfigure(1, weight=1)
     
 #     recipe_label=Label(grid_frame, text="Recipe Name", fg='#227C19', bg='#F7FF00',
 #                     font=("gabriola", 40), relief="solid", borderwidth=3).grid(columnspan=2, row=0, column=0,sticky='ew', pady=10, padx=150, ipady=20)
     type_label=Label(grid_frame, text="Type: {}".format(recipe_info["type"]), fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=0, column=0,sticky='ew', padx=50, pady=10, ipady=40)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=0, column=0,sticky='ew', padx=50, pady=10, ipady=20)
     time_label=Label(grid_frame, text="Time: {} hrs".format(recipe_info["time"]), fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=0, column=1,sticky='ew', padx=50, pady=10, ipady=40)
-    nothing_label=Label(grid_frame, text="", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(columnspan=2, row=1, column=0, sticky='ew', ipady=40, pady=10)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=0, column=1,sticky='ew', padx=50, pady=10, ipady=20)
+    # nothing_label=Label(grid_frame, text="", fg='white', bg=PURPLE_BUTTON_COLOR,
+    #                 font=("gabriola", 20), relief="solid", borderwidth=3).grid(columnspan=2, row=1, column=0, sticky='ew', ipady=40, pady=10)
     ingredients_label=Label(grid_frame, text="Ingredients", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=2, column=0,sticky='ew', padx=screen_width/10, ipady=45)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=1, column=0,sticky='ew', padx=screen_width/10, ipady=25)
     steps_label=Label(grid_frame, text="Steps", fg='white', bg=PURPLE_BUTTON_COLOR,
-                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=2, column=1,sticky='ew', padx=screen_width/10, ipady=45)
+                    font=("gabriola", 20), relief="solid", borderwidth=3).grid(row=1, column=1,sticky='ew', padx=screen_width/10, ipady=25)
     
     ingredients_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20))
     ingredients_text.insert(END, "\n".join(DAO_OBJ.find_ingredients_by_recipe(recipe_name)))
     ingredients_text.configure(state="disabled")
-    ingredients_text.grid(row=3, column=0,sticky='sew', padx=10, pady=10)
+    ingredients_text.grid(row=2, column=0,sticky='sew', padx=10, pady=10)
     steps_text = tk.Text(grid_frame, border=3, fg='white', bg=PURPLE_BUTTON_COLOR, font=("Georgia", 20))
     steps_text.insert(END, "\n".join(recipe_info["steps"]))
     steps_text.configure(state="disabled")
-    steps_text.grid(row=3, column=1,sticky='sew', padx=10, pady=10)
+    steps_text.grid(row=2, column=1,sticky='sew', padx=10, pady=10)
+
+    complete_recipe_btn = Button(grid_frame, text="Complete Recipe", fg='white', bg=PURPLE_BUTTON_COLOR, bd=7, font=("Georgia", 20),
+                            command=lambda name=recipe_name: complete_recipe(recipe_name))
+    complete_recipe_btn.grid(row=3, column=1, sticky="nsew", padx=50)
     
     # Add a button to the top right for adding ingredients to shopping list
     shop_recipe_btn=Button(text="Shop Missing Ingredients", fg='white', bg=DARK_BLUE_FRAME_BG, bd=7, font = ("Gariola", 18),
@@ -385,6 +451,14 @@ def create_recipe_page(recipe_name, going_back=False):
     
     # Log the border_frame for deletion later
     nodes.append(border_frame)
+
+
+def get_food_score(food_name, food_scores):
+    for item in food_scores:
+        if item["name"] == food_name:
+            return item["score"]
+    else:
+        return -1
 
 
 def create_food_inventory(page=0, going_back=False, pass_through=None):
@@ -415,9 +489,9 @@ def create_food_inventory(page=0, going_back=False, pass_through=None):
 
             # Now need to add the internal blocks
             # Used for indexing for the name
-            label_names = ["Name", "Quantity", "Expiration Date", "Purchase Date"] #took Location out
+            label_names = ["Name", "Quantity", "Expiration Date", "Purchase Date", "Likability"] #took Location out
             # Adding the first three labels on the left side
-            for j in range(0, 4):
+            for j in range(0, 5):
                 new_label = Label(entry_frame, text=label_names[j], fg='white', bg=label_color, borderwidth=3,
                               font=("Gariola", 12), wraplength=100)
                 new_label.place(relx=.08 + .14 * j, rely=.1, relheight=.8, relwidth=.12, anchor='n')
@@ -439,6 +513,8 @@ def create_food_inventory(page=0, going_back=False, pass_through=None):
         food_inv = DAO_OBJ.get_inventory(USER)
     else:
         food_inv = pass_through["food_inventory"]
+
+    food_scores = DAO_OBJ.get_scored_ingredients(USER)
 
     # First get the index we need based on the page
     food_index = 0
@@ -462,11 +538,13 @@ def create_food_inventory(page=0, going_back=False, pass_through=None):
             # Set the click to reach food page
             bind_frame_and_children(food_blocks[i+1]["frame"], lambda e, food_inv=food_inv, name=food_inv[food_index]["name"]:create_food_page(name, food_inv))
 
-        food_blocks[i+1]['name'].config(text=food_inv[food_index]["name"]  if not blank_rest else "")
-        food_blocks[i+1]['quantity'].config(text=food_inv[food_index]["quantity"]  if not blank_rest else "")
-        # food_blocks[i+1]['location'].config(text="Location"  if not blank_rest else "")
-        food_blocks[i+1]['expiration date'].config(text=food_inv[food_index]["expiration"]  if not blank_rest else "")
-        food_blocks[i+1]['purchase date'].config(text=food_inv[food_index]["purchase"]  if not blank_rest else "")
+        food_blocks[i+1]['name'].config(text=food_inv[food_index]["name"] if not blank_rest else "")
+        food_blocks[i+1]['quantity'].config(text=food_inv[food_index]["quantity"] if not blank_rest else "")
+        food_blocks[i+1]['likability'].config(text=get_food_score(food_inv[food_index]["name"], food_scores) if not blank_rest else "")
+        food_blocks[i+1]['expiration date'].config(text=food_inv[food_index]["expiration"] if not blank_rest else "")
+        food_blocks[i+1]['purchase date'].config(text=food_inv[food_index]["purchase"] if not blank_rest else "")
+        if blank_rest:
+            food_blocks[i+1]["substitutes"].config(text="")
         food_index += 1
     
     l_arrow, r_arrow = create_left_right_arrows()
@@ -525,7 +603,7 @@ def create_food_page(food_name, food_inv):
     purchdate_label.bind('<Configure>', lambda e: purchdate_label.config(wraplength=purchdate_label.winfo_width()))
     purchdate_label.grid(row=1, column=1,sticky='nsew')
 
-    substitutes_label = Label(recipes_frame, text="Substitutions: {}".format(subs if subs else "None"), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
+    substitutes_label = Label(recipes_frame, text="Substitutions: {}".format(", ".join(subs) if subs else "None"), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
                           font=("Gariola", 20), wraplength=800, relief="solid")
     substitutes_label.bind('<Configure>', lambda e: substitutes_label.config(wraplength=substitutes_label.winfo_width()))
     substitutes_label.grid(row=0, column=1,sticky='nsew')
@@ -533,6 +611,33 @@ def create_food_page(food_name, food_inv):
     nodes.append(border_frame)
 
     
+def generate_random_weekplan():
+    import copy
+    all_recipes = DAO_OBJ.get_scored_recipes(USER)
+    # Remove all recipes of score 0 as we dont want those to be recommended
+    remove_recipes = []
+    for recipe in all_recipes:
+        if recipe["score"] == 0:
+            remove_recipes.append(recipe)
+    for recipe in remove_recipes:
+        all_recipes.remove(recipe)
+
+    recipe_plan = []
+    # duplicate recipes as little as possible, go through all before repeating
+    recipes_left = None
+    for i in range(7):
+        if not recipes_left:
+            recipes_left = copy.deepcopy(all_recipes)
+        next_choice = random.choice(recipes_left)
+        next_choice["completed"] = False
+        recipes_left.remove(next_choice)
+        recipe_plan.append(next_choice)
+
+    return recipe_plan
+
+
+
+
 def create_weekplan_page(going_back=False):
     reset_screen()
     title_lbl.config(text = "Weekly Meal Plan")
@@ -550,6 +655,10 @@ def create_weekplan_page(going_back=False):
     outer_frame.grid_columnconfigure(5, weight=1)
     outer_frame.grid_columnconfigure(6, weight=1)
     
+    global WEEK_MEAL_PLAN
+    if not WEEK_MEAL_PLAN:
+        WEEK_MEAL_PLAN = generate_random_weekplan()
+
     border_size = 8
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     for i in range(7):
@@ -567,27 +676,30 @@ def create_weekplan_page(going_back=False):
         # Now adding the actual recipe info
         day_label = Label(inner_day_frame, text=days[i], fg='black', borderwidth=2, bg=PURPLE_BUTTON_COLOR,
                           font=("Gariola", 14), wraplength=120, relief="solid").grid(row=0, column=0,sticky='nsew')
-        recipe_label = Label(inner_day_frame, text="Recipe: <XXX>", fg='black', borderwidth=2,
+        recipe_label = Label(inner_day_frame, text="Recipe: {}".format(WEEK_MEAL_PLAN[i]["name"]), fg='black', borderwidth=2,
                           font=("Gariola", 14), wraplength=120, relief="solid").grid(row=1, column=0,sticky='nsew')
-        time_label = Label(inner_day_frame, text="Time: 1 hr and some minutes", fg='black', borderwidth=2,
+        time_label = Label(inner_day_frame, text="Time: {} hrs".format(WEEK_MEAL_PLAN[i]["time"]), fg='black', borderwidth=2,
                           font=("Gariola", 14), wraplength=120, relief="solid").grid(row=2, column=0,sticky='nsew')
-        completed_label = Label(inner_day_frame, text="Completed: [X]", fg='black', borderwidth=2,
+        completed_label = Label(inner_day_frame, text="Completed: [{}]".format(u"\u2713" if WEEK_MEAL_PLAN[i]["completed"] else " "), fg='black', borderwidth=2,
                           font=("Gariola", 14), wraplength=120, relief="solid").grid(row=3, column=0,sticky='nsew')
         
         # Add on click
-        bind_frame_and_children(inner_day_frame, lambda e, index=i: create_dayplan_page(days[index]))
+        bind_frame_and_children(inner_day_frame, lambda e, index=i: create_dayplan_page(days[index], WEEK_MEAL_PLAN[index]))
         
     nodes.append(outer_frame)
 
 
-def switch_meal_completed(label):
+def switch_meal_completed(label, recipe):
     if "[ ]" in label.cget("text"):
-        label.config(text="Completed [X]")
-    else:
-        label.config(text="Completed [ ]")
+        label.config(text="Completed [{}]".format(u"\u2713"))
+        recipe["completed"] = True
+        complete_recipe(recipe["name"])
+    # Dont let it switch back
+    # else:
+    #     label.config(text="Completed [ ]")
 
 
-def create_dayplan_page(day, going_back=False):
+def create_dayplan_page(day, recipe, going_back=False):
     reset_screen()
     title_lbl.config(text = "{} Meal Plan".format(day))
     if not going_back:
@@ -602,7 +714,7 @@ def create_dayplan_page(day, going_back=False):
     recipes_frame.grid_columnconfigure(1, weight=1)
     
     recipe_btn=Button(recipes_frame, text="Recipe", fg='white', bg=PURPLE_BUTTON_COLOR, bd=7, font = ("Gariola", 14),
-                            relief="ridge", command=lambda: create_recipe_page(None))
+                            relief="ridge", command=lambda: create_recipe_page(recipe["name"]))
     recipe_btn.grid(row=1, column=0, columnspan=2, sticky='nsew', padx=50, pady=20)
     time_label = Label(recipes_frame, text="Time: 1 hr and some minutes", fg='white', borderwidth=2, bg=PURPLE_BUTTON_COLOR,
                           font=("Gariola", 14), wraplength=120, relief="solid").grid(padx=75, pady=15, row=0, column=0,sticky='nsew', columnspan=2)
@@ -610,8 +722,8 @@ def create_dayplan_page(day, going_back=False):
                           font=("Gariola", 14), wraplength=250, relief="solid")
     completed_label.grid(row=2, column=0,sticky='nsew')
     
-    recipe_btn=Button(recipes_frame, text="Complete/Uncomplete Meal", fg='white', bg=PURPLE_BUTTON_COLOR, bd=7, font = ("Gariola", 14),
-                            relief="ridge", command=lambda: switch_meal_completed(completed_label))
+    recipe_btn=Button(recipes_frame, text="Complete Meal", fg='white', bg=PURPLE_BUTTON_COLOR, bd=7, font = ("Gariola", 14),
+                            relief="ridge", command=lambda: switch_meal_completed(completed_label, recipe))
     recipe_btn.grid(row=2, column=1, sticky='nsew')
     
     nodes.append(border_frame)
@@ -624,6 +736,7 @@ def add_preference(entry, pref_entry, text_area):
         tk.messagebox.showwarning(title="Missing Info", message="Missing either the food name, or preference level!")
     else:
          text_area.insert("end", "\u0333".join(new_food) + "\u0333: {}\n".format(pref_num))
+         DAO_OBJ.set_score(USER, new_food, int(pref_num))
 
 def create_user_pref_page(going_back=False):
     reset_screen()
@@ -631,7 +744,8 @@ def create_user_pref_page(going_back=False):
     if not going_back:
         BACK_STATE.append("user_prefs")
         
-    temp_list = {"orange": 5, "grapes": 10, "chicken": 2, "beef": 0, "eggs": 8}
+    # temp_list = {"orange": 5, "grapes": 10, "chicken": 2, "beef": 0, "eggs": 8}
+    user_prefs = {}
         
     border_color = Frame(background="black")
     text_area = tk.Text(border_color, border=0, bg="light grey", font=("Georgia", 20))
@@ -640,9 +754,9 @@ def create_user_pref_page(going_back=False):
     text_area.insert("end", "\u0333".join("<Ingredient>") + "\u0333: <Preference 0-10>\n")
     text_area.insert("end", "================================\n\n")
     # Insert each line separately for individual clicking
-    for item in temp_list:
-        text_area.insert("end", "\u0333".join(item) + "\u0333: {}".format(temp_list[item]))
-        text_area.insert("end", "\n")
+    # for item in temp_list:
+    #     text_area.insert("end", "\u0333".join(item) + "\u0333: {}".format(temp_list[item]))
+    #     text_area.insert("end", "\n")
     
     # Creating the black border
     border_size = 5
