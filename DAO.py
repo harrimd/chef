@@ -155,6 +155,21 @@ class DAO:
             return ingredients
 
     @staticmethod
+    def _add_meal_to_plan(tx, name, recipe, date):
+          tx.run("""
+            MATCH
+              (p:Person{name:$name}),
+              (r:Recipe{name:$recipe})
+            CREATE (p)-[:PLANS{date:$date, completed:false}]->(r)
+          """, name=name, recipe=recipe, date=date)
+          
+    def add_meal_to_plan(self, person_name, recipe_name, date):
+          with self.driver.session() as session:
+            session.write_transaction(\
+              self._add_meal_to_plan, person_name, recipe_name, date)
+            print(f'Added {recipe_name} to {person_name} plan on {date}')
+    
+    @staticmethod
     def _find_ingredients_by_recipe(tx, name):
         query = ("""
             MATCH (r:Recipe)-[:NEEDS]->(i:Ingredient) 
@@ -806,5 +821,6 @@ if __name__ == "__main__":
 
     # weekly meal plan page
     dao.get_meal_plan("Alan", "Monday")
+    dao.add_meal_to_plan("Alan", "Fried Chicken", "Tuesday")
 
     dao.close()
