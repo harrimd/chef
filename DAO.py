@@ -60,8 +60,10 @@ class DAO:
 
     def shopping_by_recipe(self, person_name, recipe_name):
         ingredients = self.find_ingredients_by_recipe(recipe_name)
+        inventory_names = [entry["name"] for entry in self.get_inventory(person_name)]
         for i in ingredients:
-          self.add_shopping_item(person_name, i)
+          if i not in inventory_names:
+              self.add_shopping_item(person_name, i)
 
     def add_shopping_item(self, person_name, ingredient_name):
         with self.driver.session() as session:
