@@ -87,9 +87,9 @@ class IngredientType:
                 # if the override substitution refers to the substitutee or one of its ancestors, then just use the override substitutability value
                 if override_sub == substitutee or override_sub in substitutee_ancestors:
                     return self.getSubstitutions()[(override_sub, override_context)]
-                # if the override substitution refers to a child of the substitutee, then multiply the override substitutability value by the similarity score of the substitutee
-                elif substitutee in override_sub.getAncestors():
-                    return self.getSubstitutions()[(override_sub, override_context)] * substitutee.getSimilarity()
+                # multiply the override substitutability value by the substitutability score of the override substitution for the substitutee
+                else:
+                    return self.getSubstitutions()[(override_sub, override_context)] * override_sub.calcSubstitutabilityHelper(substitutee, context, substitutee_ancestors)
 
         # if the substitution is one of the substitutee's ancestors, then its substitutability is
         # the similarity within that category
@@ -134,28 +134,34 @@ assert orange.calcSubstitutability(kale) == 0
 dairy = IngredientType("dairy", 0, [])
 dairy_drink = IngredientType("dairy drink", 0.7, [dairy])
 milk = IngredientType("milk", 0.95, [dairy_drink])
+kefir = IngredientType("kefir", 1, [dairy_drink])
 whole_milk = IngredientType("whole milk", 1, [milk])
 yogurt = IngredientType("yogurt", 1, [dairy])
 dairy_free_milk = IngredientType("dairy-free milk", 0.9, [], {(milk, None): 0.9, (milk, "baking"): 0.1})
 soy_milk = IngredientType("soy milk", 1, [dairy_free_milk], {(milk, "baking"): 0.7})
 oat_milk = IngredientType("oat milk", 1, [dairy_free_milk], {(milk, "baking"): 0.4})
 rice_milk = IngredientType("rice milk", 1, [dairy_free_milk])
-#
-assert dairy_free_milk.calcSubstitutability(whole_milk) == 0.9 # FIX milk weight
+
+assert dairy_free_milk.calcSubstitutability(whole_milk) == 0.9
 assert dairy_free_milk.calcSubstitutability(milk) == 0.9
-assert dairy_free_milk.calcSubstitutability(dairy_drink) == 0.63, dairy_free_milk.calcSubstitutability(dairy_drink)
-assert dairy_free_milk.calcSubstitutability(dairy) == 0
+assert dairy_free_milk.calcSubstitutability(dairy_drink) == 0.9, dairy_free_milk.calcSubstitutability(dairy_drink)
+assert dairy_free_milk.calcSubstitutability(kefir) == 0.63
+assert dairy_free_milk.calcSubstitutability(dairy) == 0.9
 assert soy_milk.calcSubstitutability(whole_milk) == 0.9
 assert soy_milk.calcSubstitutability(milk) == 0.9
-assert soy_milk.calcSubstitutability(dairy_drink) == 0.63
-assert soy_milk.calcSubstitutability(dairy) == 0
+assert soy_milk.calcSubstitutability(dairy_drink) == 0.9
+assert soy_milk.calcSubstitutability(kefir) == 0.63
+assert soy_milk.calcSubstitutability(dairy) == 0.9
 assert rice_milk.calcSubstitutability(milk, "baking") == 0.1, rice_milk.calcSubstitutability(milk, "baking")
 assert soy_milk.calcSubstitutability(milk, "baking") == 0.7, soy_milk.calcSubstitutability(milk, "baking")
 assert oat_milk.calcSubstitutability(milk, "baking") == 0.4
 assert rice_milk.calcSubstitutability(whole_milk, "baking") == 0.1, rice_milk.calcSubstitutability(whole_milk, "baking")
 assert soy_milk.calcSubstitutability(whole_milk, "baking") == 0.7, soy_milk.calcSubstitutability(whole_milk, "baking")
 assert oat_milk.calcSubstitutability(whole_milk, "baking") == 0.4
-assert rice_milk.calcSubstitutability(dairy_drink, "baking") == 0.07
-assert soy_milk.calcSubstitutability(dairy_drink, "baking") == 0.49
-assert oat_milk.calcSubstitutability(dairy_drink, "baking") == 0.28
-assert rice_milk.calcSubstitutability(yogurt) == 0
+assert rice_milk.calcSubstitutability(dairy_drink, "baking") == 0.1
+assert soy_milk.calcSubstitutability(dairy_drink, "baking") == 0.7
+assert oat_milk.calcSubstitutability(dairy_drink, "baking") == 0.4
+assert rice_milk.calcSubstitutability(kefir, "baking") == 0.07
+assert soy_milk.calcSubstitutability(kefir, "baking") == 0.49
+assert oat_milk.calcSubstitutability(kefir, "baking") == 0.28
+assert soy_milk.calcSubstitutability(yogurt) == 0
