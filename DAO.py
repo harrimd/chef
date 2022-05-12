@@ -354,15 +354,12 @@ class DAO:
             
     @staticmethod
     def _set_score(tx, person, ingredient, score):
-          tx.run('MERGE (:Ingredient{name:$ingredient})',\
-            ingredient=ingredient)
           tx.run("""
-              MATCH 
-                (p:Person{name:$person}), 
-                (i:Ingredient{name:$ingredient})
-              MERGE (p)-[:LIKES{
-                score:$score
-              }]->(i)
+              MERGE (i:Ingredient{name:$ingredient})
+              MERGE (p:Person{name:$person})
+              MERGE (p)-[r:LIKES]->(i)
+              ON CREATE SET r.score = $score
+              ON MATCH SET r.score = $score
               """, person=person, ingredient=ingredient, score=score)
 
     @staticmethod
@@ -849,5 +846,10 @@ if __name__ == "__main__":
       "expiration":"2022-05-11",
       "purchase":"2022-05-03"
     })
+    
+    dao.set_score("Alan", "Beef", 4)
+    dao.get_scored_ingredients("Alan")
+    dao.set_score("Alan", "Beef", 1)
+    dao.get_scored_ingredients("Alan")
 
     dao.close()
