@@ -29,11 +29,6 @@ DAO_OBJ = DAO.DAO(DB_URI, DB_USER, DB_PASS)
 USER = "Alan"
 # DAO_OBJ.init_db()
 
-print(DAO_OBJ.get_scored_ingredients("Alan"))
-# print(DAO_OBJ.find_ingredients_by_recipe("Sesame Chicken"))
-
-# exit(0)
-
 def go_back():
     if len(BACK_STATE):
         BACK_STATE.pop()
@@ -177,7 +172,6 @@ def create_shopping_list(going_back=False):
     if not going_back:
         BACK_STATE.append("shopping_list")
     
-    # temp_list = ["orange", "grapes", "chicken", "beef", "eggs"]
     shopping_list = DAO_OBJ.get_shopping_list(USER)
     global text_area
     global nodes
@@ -268,29 +262,6 @@ def create_recipe_list(page=0, going_back=False, pass_through=None):
 
     # Get all completable recipes
     prepable_recipes = DAO_OBJ.find_ready_recipes_by_person(USER)
-    # just a default list of recipes
-    # recipes = [
-    #     {"name": "Quesadilla",
-    #      "type": "Mexican",
-    #      "time": 1.0,
-    #       "preparable": True},
-    #     {"name": "Cashew Chicken",
-    #      "type": "Asian",
-    #      "time": 2.0,
-    #       "preparable": False},
-    #     {"name": "Cheeseburger",
-    #      "type": "American",
-    #      "time": .5,
-    #       "preparable": True},
-    #     {"name": "Chili",
-    #      "type": "-",
-    #      "time": 1.5,
-    #       "preparable": True},
-    #     {"name": "French Toast",
-    #      "type": "Breakfast",
-    #      "time": .4,
-    #       "preparable": True}
-    # ]
 
     if not pass_through:
         recipe_blocks = []
@@ -589,11 +560,6 @@ def create_food_page(food_name, food_inv):
     quant_label.bind('<Configure>', lambda e: quant_label.config(wraplength=quant_label.winfo_width()))
     quant_label.grid(row=0, column=0,sticky='nsew')
     
-    # loc_label = Label(recipes_frame, text="Location: <loc>", fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
-    #                       font=("Gariola", 20), wraplength=400, relief="solid")
-    # loc_label.bind('<Configure>', lambda e: loc_label.config(wraplength=loc_label.winfo_width()))
-    # loc_label.grid(row=0, column=1,sticky='nsew')
-    
     expdate_label = Label(recipes_frame, text="Expiration Date: {}".format(food_obj["expiration"]), fg='white', bg=PURPLE_BUTTON_COLOR, borderwidth=2,
                           font=("Gariola", 20), wraplength=400, relief="solid")
     expdate_label.bind('<Configure>', lambda e: expdate_label.config(wraplength=expdate_label.winfo_width()))
@@ -634,8 +600,6 @@ def generate_random_weekplan():
         recipe_plan.append(next_choice)
 
     return recipe_plan
-
-
 
 
 def create_weekplan_page(going_back=False):
@@ -744,7 +708,6 @@ def create_user_pref_page(going_back=False):
     if not going_back:
         BACK_STATE.append("user_prefs")
         
-    # temp_list = {"orange": 5, "grapes": 10, "chicken": 2, "beef": 0, "eggs": 8}
     user_prefs = {}
         
     border_color = Frame(background="black")
@@ -753,6 +716,7 @@ def create_user_pref_page(going_back=False):
     # Instructions at the top
     text_area.insert("end", "\u0333".join("<Ingredient>") + "\u0333: <Preference 0-10>\n")
     text_area.insert("end", "================================\n\n")
+    # Can print default user prefs here after loading them from DB
     # Insert each line separately for individual clicking
     # for item in temp_list:
     #     text_area.insert("end", "\u0333".join(item) + "\u0333: {}".format(temp_list[item]))
@@ -820,6 +784,7 @@ def create_main_screen():
     
     for element in [food_inv_btn, recipe_list_btn, week_plan_btn, shopping_list_btn]:
         nodes.append(element)
+
 
 root = tk.Tk()
 root.title('Tkinter Window Demo')
