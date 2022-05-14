@@ -33,3 +33,8 @@ DB_PASS=<as specified by your instance>
 ```
 
 When your environment variables are set, run `python3 DAO.py` to populate the DB with the starting data.
+
+# GUI Info
+Once the database is setup and the dependencies are installed, running the GUI is very simple. All you need to do is run the `chef_gui.py` file using `python3 chef_gui.py`. If you want to init the database when running chef, ensure the `DAO_OBJ.init_db()` call at the top of the file is not commented out.
+
+The GUI is split into rendering different pages, each rendered page can be found by looking for the methods that are of the form `create_<some page>()`. All drawn elements are added to a list at the bottom of the functions, and removed in the `reset_screen()` method. For the most part, related methods will be grouped together.
